@@ -1,0 +1,9 @@
+bin/
+obj/
+*.user
+.vs/
+
+# Biến môi trường – chỉ commit .env.example
+.env
+.env.*
+!.env.example

@@ -1,0 +1,56 @@
+{
+  "status": true,
+  "items": [
+    {
+      "tmdb": {
+        "type": "tv",
+        "id": "279923",
+        "season": null,
+        "vote_average": "0.0",
+        "vote_count": 0
+      },
+      "imdb": {
+        "id": "tt35288698"
+      },
+      "modified": {
+        "time": "2026-10-27T17:13:06+07:00"
+      },
+      "_id": 53718,
+      "name": "Túy Mộng",
+      "origin_name": "Dream",
+      "slug": "tuy-mong",
+      "poster_url": "https://vsmov.com/storage/images/lqTioTBVKH3RfdgCe04SR9V8taR.jpg",
+      "thumb_url": "https://vsmov.com/storage/images/xvUOJChljBOY9e4vDc36p2yOIOM.jpg",
+      "year": 2026
+    },
+    {
+      "tmdb": {
+        "type": "tv",
+        "id": "294446",
+        "season": null,
+        "vote_average": "8.0",
+        "vote_count": 2
+      },
+      "imdb": {
+        "id": "tt37421560"
+      },
+      "modified": {
+        "time": "2026-10-27T17:12:10+07:00"
+      },
+      "_id": 53520,
+      "name": "Mỹ Nhân Dư",
+      "origin_name": "The Vanishing Beauty",
+      "slug": "my-nhan-du",
+      "poster_url": "https://vsmov.com/storage/images/6Iha7gx0lTdrv6x7dECtjB8YnLA.jpg",
+      "thumb_url": "https://vsmov.com/storage/images/hwx7VCmLRhd5seoJuWirnjjnkEb.jpg",
+      "year": 2026
+    }
+  ],
+  "pathImage": "https://nguon.vsphim.com/storage/images/",
+  "pagination": {
+    "totalItems": 20810,
+    "totalItemsPerPage": 24,
+    "currentPage": 1,
+    "totalPages": 868
+  }
+}

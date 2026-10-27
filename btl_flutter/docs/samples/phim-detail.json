@@ -1,0 +1,107 @@
+{
+  "status": true,
+  "msg": "",
+  "movie": {
+    "tmdb": {
+      "type": "tv",
+      "id": "335951",
+      "season": null,
+      "vote_average": "0.0",
+      "vote_count": 0
+    },
+    "imdb": {
+      "id": null
+    },
+    "created": {
+      "time": "2026-10-27T12:33:02+07:00"
+    },
+    "modified": {
+      "time": "2026-10-27T12:33:28+07:00"
+    },
+    "_id": 54078,
+    "name": "Mùa Hè Đáng Nhớ",
+    "origin_name": "Summer Vacation",
+    "slug": "mua-he-dang-nho-2026",
+    "content": "An ordinary teen girl longs for something new – will meeting a handsome boy in a countryside village change her life?",
+    "type": "series",
+    "status": "ongoing",
+    "poster_url": "https://vsmov.com/storage/images/tXSbEP4vGLOBpJtFg2Vsmm6aStx.jpg",
+    "thumb_url": "https://vsmov.com/storage/images/n6di6hbhC2vQZmFOrfieQLHU8MI.jpg",
+    "trailer_url": null,
+    "time": "60 phút",
+    "episode_current": "Tập 1",
+    "episode_total": "10",
+    "quality": "HD",
+    "lang": "Vietsub",
+    "notify": null,
+    "showtimes": "Tập mới được ra mắt vào ngày 02/11/2026",
+    "year": 2026,
+    "keywords": [
+      "romance",
+      "fantasy"
+    ],
+    "view": 15,
+    "chieurap": false,
+    "sub_docquyen": true,
+    "actor": [
+      "Cho Yi-hyun",
+      "Jung Jin-young",
+      "Ryu Hae-jun",
+      "Hong Ye-ji",
+      "Seo Ji-young",
+      "Kang Ji-eun",
+      "Kim Bo-young",
+      "Shin Hyeon-jong",
+      "Cha Se-jin",
+      "Kang Hee-gu",
+      "Hwang Dae-ki",
+      "Lee Hyun",
+      "Jung Yong-hee"
+    ],
+    "director": [
+      "Song Ji-won"
+    ],
+    "category": [
+      {
+        "id": 15,
+        "name": "Chính Kịch",
+        "slug": "chinh-kich"
+      },
+      {
+        "id": 17,
+        "name": "Bí Ẩn",
+        "slug": "bi-an"
+      },
+      {
+        "id": 33,
+        "name": "Lãng Mạn",
+        "slug": "lang-man"
+      },
+      {
+        "id": 46,
+        "name": "Viễn Tưởng",
+        "slug": "vien-tuong"
+      }
+    ],
+    "country": [
+      {
+        "id": 10,
+        "name": "Hàn Quốc",
+        "slug": "han-quoc"
+      }
+    ]
+  },
+  "episodes": [
+    {
+      "server_name": "Vietsub\r\n                        #1",
+      "server_data": [
+        {
+          "name": "1",
+          "slug": "tap-1",
+          "filename": "1",
+          "link_embed": "https://v1.streamvsmov.com/video/364fa3f4-5916-40b8-959f-701a0e9c78cc"
+        }
+      ]
+    }
+  ]
+}
