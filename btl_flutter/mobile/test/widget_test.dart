@@ -1,30 +1,23 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:mobile/main.dart';
+import 'package:mobile/app/app.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('Hiển thị 4 tab và chuyển tab được', (tester) async {
+    await tester.pumpWidget(const ProviderScope(child: VsMovieApp()));
+    await tester.pumpAndSettle();
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(find.byType(NavigationDestination), findsNWidgets(4));
+    expect(find.text('VsMovie'), findsOneWidget); // AppBar trang chủ
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    await tester.tap(find.text('Tìm kiếm'));
+    await tester.pumpAndSettle();
+    expect(find.text('Tìm phim theo tên – Phase 4'), findsOneWidget);
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    await tester.tap(find.text('Thư viện'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Phase 6'), findsOneWidget);
   });
 }

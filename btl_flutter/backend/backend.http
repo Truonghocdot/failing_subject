@@ -1,0 +1,43 @@
+@host = http://localhost:5080
+
+### Kiểm tra API + kết nối MySQL
+GET {{host}}/health
+
+### Tài liệu OpenAPI (Development)
+GET {{host}}/openapi/v1.json
+
+### Trang chủ: 4 section (Mới cập nhật, Phim bộ, Phim lẻ, Chiếu rạp)
+GET {{host}}/api/home
+
+### Danh sách phim: phim-moi-cap-nhat | phim-bo | phim-le | phim-chieu-rap
+GET {{host}}/api/movies?list=phim-bo&page=1
+
+### Tìm kiếm
+GET {{host}}/api/movies/search?q=mua he&page=1
+
+### Chi tiết phim bộ
+GET {{host}}/api/movies/mua-he-dang-nho-2026
+
+### Chi tiết phim lẻ
+GET {{host}}/api/movies/chimera
+
+### Không tồn tại → 404 ProblemDetails
+GET {{host}}/api/movies/khong-ton-tai
+
+### Thể loại
+GET {{host}}/api/genres
+
+### Phim theo thể loại
+GET {{host}}/api/genres/lang-man/movies?page=1
+
+### Quốc gia
+GET {{host}}/api/countries
+
+### Phim theo quốc gia
+GET {{host}}/api/countries/han-quoc/movies?page=1
+
+### Phim theo năm
+GET {{host}}/api/years/2025/movies?page=1
+
+### Tham số sai → 400
+GET {{host}}/api/movies?list=abc&page=0

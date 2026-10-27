@@ -4,11 +4,19 @@
 
 | Hạng mục | Lựa chọn |
 |---|---|
-| Hệ quản trị CSDL | **PostgreSQL 17** (chạy bằng Docker – [docker-compose.yml](../docker-compose.yml)) |
-| ORM | **EF Core 10** + `Npgsql.EntityFrameworkCore.PostgreSQL`, migration bằng `dotnet-ef` (local tool) |
+| Hệ quản trị CSDL | **MySQL** (server dev hiện tại: 26.7, `localhost:3306`) – database `vsmovie`, user riêng `vsmovie` |
+| Charset | `utf8mb4` / `utf8mb4_unicode_ci` (đủ tiếng Việt, emoji) – engine InnoDB |
+| ORM | **EF Core 10** + `MySql.EntityFrameworkCore` (provider chính thức của Oracle), migration bằng `dotnet-ef` (local tool) |
 | Quy ước đặt tên | `snake_case` cho bảng và cột (`EFCore.NamingConventions` → `UseSnakeCaseNamingConvention()`) |
-| Thời gian | Lưu `timestamptz` (UTC), C# dùng `DateTimeOffset` / `DateTime` UTC |
-| Khoá chính | `uuid` cho `users` (sinh ở app bằng `Guid.CreateVersion7()`), `bigint identity` cho các bảng còn lại |
+| Thời gian | `datetime(6)` lưu **UTC** (MySQL không có kiểu kèm múi giờ); C# dùng `DateTime` với `Kind = Utc` |
+| Khoá chính | `char(36)` (Guid) cho `users` – sinh ở app bằng `Guid.CreateVersion7()`; `bigint AUTO_INCREMENT` cho các bảng còn lại |
+
+> Vì sao không dùng Pomelo? `Pomelo.EntityFrameworkCore.MySql` mới hỗ trợ tới EF Core 9, dự án dùng .NET/EF Core 10.
+
+### Cách vận hành
+
+Hệ thống chạy **thủ công bằng lệnh** (`dotnet run`, `flutter run`), không đóng gói Docker.
+MySQL là service riêng lắng nghe cổng `3306`. Máy dev hiện chạy MySQL trong container `mysql-dev`, nhưng backend chỉ quan tâm tới `host:port` trong connection string. MySQL cài native cũng dùng được y hệt.
 
 ### DB lưu gì / không lưu gì
 
@@ -24,7 +32,20 @@
 - **Đã đăng nhập**: yêu thích + lịch sử lưu trên server, dùng chung giữa các thiết bị.
 - Client chỉ gửi `slug`. Backend tự lấy thông tin phim từ vsmov (qua `MovieService`, có cache) rồi **upsert** vào `movies` → không tin dữ liệu phim do client gửi lên.
 
-## 2. Sơ đồ quan hệ (ERD)
+## 2. Khởi tạo database (làm 1 lần)
+
+Chạy bằng tài khoản `root` (đã làm sẵn trên máy dev ngày 27/10/2026):
+
+```sql
+CREATE DATABASE IF NOT EXISTS vsmovie CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER IF NOT EXISTS 'vsmovie'@'%' IDENTIFIED BY '<mật khẩu trong backend/.env>';
+GRANT ALL PRIVILEGES ON vsmovie.* TO 'vsmovie'@'%';
+FLUSH PRIVILEGES;
+```
+
+User `vsmovie` chỉ có quyền trên database `vsmovie`. **Không** dùng `root` trong connection string.
+
+## 3. Sơ đồ quan hệ (ERD)
 
 ```mermaid
 erDiagram
@@ -35,24 +56,24 @@ erDiagram
     movies ||--o{ watch_history : "được xem"
 
     users {
-        uuid id PK
+        char36 id PK
         varchar email UK
         varchar password_hash
         varchar display_name
         varchar avatar_url
         varchar role
-        timestamptz created_at
-        timestamptz updated_at
-        timestamptz last_login_at
+        datetime created_at
+        datetime updated_at
+        datetime last_login_at
     }
     refresh_tokens {
         bigint id PK
-        uuid user_id FK
-        char token_hash UK
+        char36 user_id FK
+        char64 token_hash UK
         varchar device_name
-        timestamptz expires_at
-        timestamptz created_at
-        timestamptz revoked_at
+        datetime expires_at
+        datetime created_at
+        datetime revoked_at
         bigint replaced_by_id FK
     }
     movies {
@@ -65,62 +86,64 @@ erDiagram
         varchar thumb_url
         smallint year
         varchar type
-        timestamptz synced_at
+        datetime synced_at
     }
     favorites {
-        uuid user_id PK,FK
+        char36 user_id PK,FK
         bigint movie_id PK,FK
-        timestamptz created_at
+        datetime created_at
     }
     watch_history {
         bigint id PK
-        uuid user_id FK
+        char36 user_id FK
         bigint movie_id FK
         varchar server_name
         varchar episode_slug
         varchar episode_name
         int position_seconds
-        timestamptz watched_at
+        datetime watched_at
     }
 ```
 
-## 3. Chi tiết bảng
+## 4. Chi tiết bảng
 
-### 3.1 `users`
+Ký hiệu: `now` = `CURRENT_TIMESTAMP(6)`; mọi cột thời gian là `datetime(6)` UTC.
+
+### 4.1 `users`
 
 | Cột | Kiểu | Ràng buộc | Ghi chú |
 |---|---|---|---|
-| `id` | `uuid` | PK | `Guid.CreateVersion7()` – sắp xếp theo thời gian |
-| `email` | `varchar(255)` | NOT NULL, **UNIQUE** | Lưu dạng `trim().toLowerInvariant()` |
+| `id` | `char(36)` | PK | `Guid.CreateVersion7()` – tăng dần theo thời gian |
+| `email` | `varchar(255)` | NOT NULL, **UNIQUE** | Lưu dạng `Trim().ToLowerInvariant()` |
 | `password_hash` | `varchar(100)` | NOT NULL | BCrypt (work factor 11) |
 | `display_name` | `varchar(100)` | NOT NULL | |
 | `avatar_url` | `varchar(500)` | NULL | |
 | `role` | `varchar(20)` | NOT NULL, default `'user'` | `user` \| `admin` |
-| `created_at` | `timestamptz` | NOT NULL, default `now()` | |
-| `updated_at` | `timestamptz` | NOT NULL, default `now()` | Cập nhật trong `SaveChanges` |
-| `last_login_at` | `timestamptz` | NULL | |
+| `created_at` | `datetime(6)` | NOT NULL, default `now` | |
+| `updated_at` | `datetime(6)` | NOT NULL, default `now` | Cập nhật trong `SaveChanges` |
+| `last_login_at` | `datetime(6)` | NULL | |
 
-### 3.2 `refresh_tokens`
+### 4.2 `refresh_tokens`
 
 | Cột | Kiểu | Ràng buộc | Ghi chú |
 |---|---|---|---|
-| `id` | `bigint identity` | PK | |
-| `user_id` | `uuid` | NOT NULL, FK → `users.id` **ON DELETE CASCADE** | |
+| `id` | `bigint` AUTO_INCREMENT | PK | |
+| `user_id` | `char(36)` | NOT NULL, FK → `users.id` **ON DELETE CASCADE** | |
 | `token_hash` | `char(64)` | NOT NULL, **UNIQUE** | SHA-256 (hex) của token – **không lưu token gốc** |
 | `device_name` | `varchar(100)` | NULL | VD "Pixel 7" |
-| `expires_at` | `timestamptz` | NOT NULL | `now + Jwt__RefreshTokenDays` |
-| `created_at` | `timestamptz` | NOT NULL, default `now()` | |
-| `revoked_at` | `timestamptz` | NULL | Set khi logout / khi xoay vòng |
+| `expires_at` | `datetime(6)` | NOT NULL | `now + Jwt__RefreshTokenDays` |
+| `created_at` | `datetime(6)` | NOT NULL, default `now` | |
+| `revoked_at` | `datetime(6)` | NULL | Set khi logout / khi xoay vòng |
 | `replaced_by_id` | `bigint` | NULL, FK → `refresh_tokens.id` ON DELETE SET NULL | Phục vụ phát hiện dùng lại token cũ |
 
 Index: `ix_refresh_tokens_user_id (user_id)`.
 
-### 3.3 `movies` (bản sao tối thiểu từ vsmov)
+### 4.3 `movies` (bản sao tối thiểu từ vsmov)
 
 | Cột | Kiểu | Ràng buộc | Ghi chú |
 |---|---|---|---|
-| `id` | `bigint identity` | PK | |
-| `source_id` | `integer` | NOT NULL, **UNIQUE** | `_id` của vsmov |
+| `id` | `bigint` AUTO_INCREMENT | PK | |
+| `source_id` | `int` | NOT NULL, **UNIQUE** | `_id` của vsmov |
 | `slug` | `varchar(150)` | NOT NULL, **UNIQUE** | Khoá tra cứu từ API |
 | `name` | `varchar(255)` | NOT NULL | |
 | `origin_name` | `varchar(255)` | NULL | |
@@ -128,42 +151,42 @@ Index: `ix_refresh_tokens_user_id (user_id)`.
 | `thumb_url` | `varchar(500)` | NOT NULL | |
 | `year` | `smallint` | NULL | |
 | `type` | `varchar(20)` | NULL | `series` \| `single` \| … |
-| `synced_at` | `timestamptz` | NOT NULL | Lần cuối đồng bộ từ nguồn; > 7 ngày thì cập nhật lại khi có thao tác |
+| `synced_at` | `datetime(6)` | NOT NULL | Lần cuối đồng bộ từ nguồn; > 7 ngày thì cập nhật lại khi có thao tác |
 
-### 3.4 `favorites`
+### 4.4 `favorites`
 
 | Cột | Kiểu | Ràng buộc |
 |---|---|---|
-| `user_id` | `uuid` | **PK (user_id, movie_id)**, FK → `users.id` ON DELETE CASCADE |
+| `user_id` | `char(36)` | **PK (user_id, movie_id)**, FK → `users.id` ON DELETE CASCADE |
 | `movie_id` | `bigint` | PK, FK → `movies.id` ON DELETE CASCADE |
-| `created_at` | `timestamptz` | NOT NULL, default `now()` |
+| `created_at` | `datetime(6)` | NOT NULL, default `now` |
 
 Index: `ix_favorites_user_id_created_at (user_id, created_at DESC)` – phân trang danh sách yêu thích.
 
-### 3.5 `watch_history`
+### 4.5 `watch_history`
 
 | Cột | Kiểu | Ràng buộc | Ghi chú |
 |---|---|---|---|
-| `id` | `bigint identity` | PK | |
-| `user_id` | `uuid` | NOT NULL, FK → `users.id` ON DELETE CASCADE | |
+| `id` | `bigint` AUTO_INCREMENT | PK | |
+| `user_id` | `char(36)` | NOT NULL, FK → `users.id` ON DELETE CASCADE | |
 | `movie_id` | `bigint` | NOT NULL, FK → `movies.id` ON DELETE CASCADE | |
 | `server_name` | `varchar(100)` | NOT NULL | VD `Vietsub #1` |
 | `episode_slug` | `varchar(50)` | NOT NULL | VD `tap-3`, `tap-full` |
 | `episode_name` | `varchar(50)` | NOT NULL | VD `3`, `Full` |
-| `position_seconds` | `integer` | NULL | Dự phòng – embed player hiện không cho đọc vị trí phát |
-| `watched_at` | `timestamptz` | NOT NULL, default `now()` | |
+| `position_seconds` | `int` | NULL | Dự phòng – embed player hiện không cho đọc vị trí phát |
+| `watched_at` | `datetime(6)` | NOT NULL, default `now` | |
 
 - **UNIQUE (user_id, movie_id)** → mỗi phim 1 bản ghi, xem tập mới thì **upsert** (cập nhật tập + `watched_at`).
 - Index: `ix_watch_history_user_id_watched_at (user_id, watched_at DESC)`.
 - Giới hạn 200 bản ghi/người dùng: sau khi upsert, xoá bản ghi cũ hơn bản thứ 200.
 
-## 4. Entity & DbContext (EF Core)
+## 5. Entity & DbContext (EF Core)
 
 ```
 backend/Data/
-├── AppDbContext.cs
+├── AppDbContext.cs  (đã có khung – Phase 0)
 ├── Entities/        User.cs, RefreshToken.cs, Movie.cs, Favorite.cs, WatchHistory.cs
-├── Configurations/  UserConfiguration.cs ... (IEntityTypeConfiguration<T>)
+├── Configurations/  UserConfiguration.cs ... (IEntityTypeConfiguration<T>, tự nạp bằng ApplyConfigurationsFromAssembly)
 └── Migrations/      (sinh tự động bởi dotnet-ef)
 ```
 
@@ -223,12 +246,24 @@ public class WatchHistory
 
 ```csharp
 // Ví dụ cấu hình
+public class UserConfiguration : IEntityTypeConfiguration<User>
+{
+    public void Configure(EntityTypeBuilder<User> b)
+    {
+        b.Property(x => x.Id).HasColumnType("char(36)");
+        b.Property(x => x.Email).HasMaxLength(255);
+        b.HasIndex(x => x.Email).IsUnique();
+        b.Property(x => x.CreatedAt).HasColumnType("datetime(6)").HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+    }
+}
+
 public class FavoriteConfiguration : IEntityTypeConfiguration<Favorite>
 {
     public void Configure(EntityTypeBuilder<Favorite> b)
     {
         b.HasKey(x => new { x.UserId, x.MovieId });
-        b.Property(x => x.CreatedAt).HasDefaultValueSql("now()");
+        b.Property(x => x.UserId).HasColumnType("char(36)");
+        b.Property(x => x.CreatedAt).HasColumnType("datetime(6)").HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
         b.HasIndex(x => new { x.UserId, x.CreatedAt }).IsDescending(false, true);
         b.HasOne<User>().WithMany(u => u.Favorites).HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
         b.HasOne(x => x.Movie).WithMany().HasForeignKey(x => x.MovieId).OnDelete(DeleteBehavior.Cascade);
@@ -236,14 +271,17 @@ public class FavoriteConfiguration : IEntityTypeConfiguration<Favorite>
 }
 ```
 
+- Đọc `DateTime` từ MySQL sẽ có `Kind = Unspecified` → thêm `ValueConverter` gán `DateTimeKind.Utc` cho mọi cột `DateTime` (cấu hình chung trong `ConfigureConventions`).
+- Sau khi `migrations add`, **mở file migration kiểm tra** kiểu cột (`char(36)`, `datetime(6)`) trước khi `database update`.
+
 ```csharp
-// Program.cs
+// Program.cs (đã có ở Phase 0)
 builder.Services.AddDbContext<AppDbContext>(o => o
-    .UseNpgsql(builder.Configuration.GetConnectionString("Default"))
+    .UseMySQL(connectionString)
     .UseSnakeCaseNamingConvention());
 ```
 
-## 5. API sử dụng database
+## 6. API sử dụng database
 
 Tất cả `/api/me/*` yêu cầu header `Authorization: Bearer <accessToken>`.
 
@@ -284,38 +322,39 @@ Tất cả `/api/me/*` yêu cầu header `Authorization: Bearer <accessToken>`.
 
 - Mật khẩu ≥ 8 ký tự; hash BCrypt; so sánh bằng `BCrypt.Verify`.
 - Đăng nhập sai: trả chung `401 "Email hoặc mật khẩu không đúng"` (không tiết lộ email có tồn tại).
+- Email trùng khi đăng ký → `409`. Bắt `DbUpdateException` do unique index phòng trường hợp 2 request đồng thời.
 - Access token JWT (HS256, `Jwt__Secret`), claim `sub` = user id, hết hạn sau `Jwt__AccessTokenMinutes`.
 - Refresh token: chỉ lưu hash; nếu một token **đã bị thu hồi** lại được dùng → thu hồi toàn bộ token của user đó (dấu hiệu bị đánh cắp).
 - Rate limit `/api/auth/*`: 10 request/phút/IP (`AddRateLimiter`).
 
-## 6. Biến môi trường
+## 7. Biến môi trường
 
-### 6.1 Backend – `backend/.env`
+### 7.1 Backend – `backend/.env`
 
-File mẫu: [backend/.env.example](../backend/.env.example). Nạp bằng `DotNetEnv` **trước** khi tạo builder:
+File mẫu: [backend/.env.example](../backend/.env.example). Nạp bằng `DotNetEnv` **trước** khi tạo builder (đã có trong `Program.cs`):
 
 ```csharp
-DotNetEnv.Env.TraversePath().Load();          // tìm .env từ thư mục hiện tại trở lên; không có file thì bỏ qua
+DotNetEnv.Env.TraversePath().Load();                // tìm .env từ thư mục hiện tại trở lên; không có file thì bỏ qua
 var builder = WebApplication.CreateBuilder(args);   // đọc biến môi trường → IConfiguration
 ```
 
 Dấu `__` ánh xạ sang cấp lồng của cấu hình: `Jwt__Secret` ⇔ `builder.Configuration["Jwt:Secret"]`.
+Giá trị trong `.env` **ghi đè** `appsettings*.json` và cả `launchSettings.json`.
 
 | Biến | Ví dụ | Dùng cho |
 |---|---|---|
 | `ASPNETCORE_ENVIRONMENT` | `Development` | Môi trường |
 | `ASPNETCORE_URLS` | `http://0.0.0.0:5080` | Cổng lắng nghe (0.0.0.0 để máy thật truy cập được) |
-| `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | `vsmovie` | Docker khởi tạo DB |
-| `ConnectionStrings__Default` | `Host=localhost;Port=5432;Database=vsmovie;Username=vsmovie;Password=...` | EF Core |
+| `ConnectionStrings__Default` | `Server=localhost;Port=3306;Database=vsmovie;User=vsmovie;Password=...;CharSet=utf8mb4` | EF Core / MySQL |
 | `Jwt__Issuer` / `Jwt__Audience` | `vsmovie-api` / `vsmovie-app` | Kiểm tra JWT |
-| `Jwt__Secret` | ≥ 32 ký tự ngẫu nhiên | Ký JWT |
+| `Jwt__Secret` | ≥ 32 ký tự ngẫu nhiên | Ký JWT (thiếu hoặc ngắn hơn → app dừng khi khởi động) |
 | `Jwt__AccessTokenMinutes` / `Jwt__RefreshTokenDays` | `30` / `30` | Thời hạn token |
 | `Vsmov__BaseUrl` / `Vsmov__TimeoutSeconds` | `https://vsmov.com/api/` / `10` | Nguồn phim |
 | `Cors__AllowedOrigins__0` | `*` | CORS |
 
-> `backend/.env` đã được tạo sẵn với mật khẩu DB và JWT secret ngẫu nhiên. **Không commit** – đã chặn trong `backend/.gitignore`.
+> `backend/.env` đã được tạo sẵn với mật khẩu của user `vsmovie` và JWT secret ngẫu nhiên. **Không commit** – đã chặn trong `backend/.gitignore`.
 
-### 6.2 Mobile – `mobile/.env`
+### 7.2 Mobile – `mobile/.env`
 
 File mẫu: [mobile/.env.example](../mobile/.env.example). Không cần package – Flutter hỗ trợ sẵn:
 
@@ -324,55 +363,56 @@ flutter run --dart-define-from-file=.env
 flutter build apk --release --dart-define-from-file=.env
 ```
 
-```dart
-class Env {
-  static const apiBaseUrl  = String.fromEnvironment('API_BASE_URL', defaultValue: 'http://10.0.2.2:5080');
-  static const apiTimeout  = int.fromEnvironment('API_TIMEOUT_SECONDS', defaultValue: 15);
-  static const playerHost  = String.fromEnvironment('PLAYER_ALLOWED_HOST_SUFFIX', defaultValue: 'streamvsmov.com');
-}
-```
+Đọc trong code qua `lib/app/env.dart` (`Env.apiBaseUrl`, `Env.apiTimeoutSeconds`, `Env.playerAllowedHostSuffix`).
 
 > Giá trị trong `mobile/.env` bị **nhúng vào APK** → chỉ chứa cấu hình công khai, tuyệt đối không đặt secret.
 > Token đăng nhập lưu bằng `flutter_secure_storage` (Keystore/Keychain), không lưu trong `shared_preferences`.
 
-## 7. Thao tác thường dùng
+## 8. Thao tác thường dùng
 
 ```bash
-# 1. Khởi động PostgreSQL (từ thư mục btl_flutter/)
-docker compose up -d
-docker compose ps                       # chờ trạng thái healthy
+# Kiểm tra backend kết nối được MySQL
+cd backend
+dotnet run
+curl http://localhost:5080/health        # {"status":"ok","database":"up"}
 
-# 2. Migration (từ thư mục backend/)
-dotnet tool restore                     # cài dotnet-ef theo dotnet-tools.json
+# Migration (tại backend/)
+dotnet tool restore                      # cài dotnet-ef theo dotnet-tools.json
 dotnet ef migrations add InitialCreate -o Data/Migrations
 dotnet ef database update
+dotnet ef migrations script -o migrate.sql   # xuất SQL nếu cần chạy tay
 
-# 3. Vào psql kiểm tra
-docker exec -it vsmovie-db psql -U vsmovie -d vsmovie -c "\dt"
+# Xem bảng – dùng MySQL Workbench / DBeaver / HeidiSQL (localhost:3306, user vsmovie)
+# hoặc mysql client có sẵn trong container dev:
+docker exec -it mysql-dev mysql -uvsmovie -p vsmovie -e "SHOW TABLES;"
 
-# Xoá sạch DB (mất dữ liệu!)
-docker compose down -v
+# Xoá sạch dữ liệu (mất dữ liệu!) rồi tạo lại từ migration
+dotnet ef database drop --force
+dotnet ef database update
 ```
 
-- Môi trường Development: gọi `db.Database.MigrateAsync()` khi khởi động để tự áp migration.
-- Lệnh `dotnet ef` cũng đọc `.env` vì `Program.cs` gọi `Env.Load()` trước khi build host.
+- Môi trường Development: gọi `db.Database.MigrateAsync()` khi khởi động để tự áp migration (thêm ở Phase 5).
+- `dotnet ef` cũng đọc `.env` vì `Program.cs` gọi `Env.Load()` trước khi build host.
+- `dotnet ef database drop` cần quyền DROP – user `vsmovie` có `ALL PRIVILEGES` trên `vsmovie.*` nên đủ; nếu tạo lại DB sau khi drop, EF tạo với charset mặc định của server (`utf8mb4`).
 
-## 8. Ví dụ truy vấn (SQL tương đương)
+## 9. Ví dụ truy vấn (SQL tương đương)
 
 ```sql
 -- Danh sách yêu thích, trang 1
 SELECT m.slug, m.name, m.thumb_url, m.year, f.created_at
 FROM favorites f JOIN movies m ON m.id = f.movie_id
-WHERE f.user_id = $1
+WHERE f.user_id = ?
 ORDER BY f.created_at DESC
 LIMIT 24 OFFSET 0;
 
 -- Upsert lịch sử xem
 INSERT INTO watch_history (user_id, movie_id, server_name, episode_slug, episode_name, watched_at)
-VALUES ($1, $2, $3, $4, $5, now())
-ON CONFLICT (user_id, movie_id)
-DO UPDATE SET server_name = EXCLUDED.server_name,
-              episode_slug = EXCLUDED.episode_slug,
-              episode_name = EXCLUDED.episode_name,
-              watched_at   = now();
+VALUES (?, ?, ?, ?, ?, UTC_TIMESTAMP(6))
+ON DUPLICATE KEY UPDATE
+    server_name  = VALUES(server_name),
+    episode_slug = VALUES(episode_slug),
+    episode_name = VALUES(episode_name),
+    watched_at   = UTC_TIMESTAMP(6);
 ```
+
+> Mặc định `CURRENT_TIMESTAMP(6)` trả giờ theo `time_zone` của session. Để chắc chắn là UTC: luôn gán thời gian từ app (`DateTime.UtcNow`) thay vì dựa vào default của DB, hoặc thêm `;ConnectionTimeZone=UTC` nếu provider hỗ trợ.

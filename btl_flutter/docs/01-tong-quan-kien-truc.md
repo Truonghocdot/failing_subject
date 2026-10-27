@@ -8,7 +8,7 @@ Xây dựng nhanh một ứng dụng xem phim **nhỏ, gọn, chạy được en
 - Tìm kiếm theo tên; lọc theo thể loại / quốc gia / năm.
 - Xem chi tiết phim và danh sách tập theo server.
 - Phát phim qua trình phát nhúng (embed player) của nguồn.
-- Đăng ký / đăng nhập; lưu phim yêu thích và lịch sử xem trên server (PostgreSQL), dùng chung nhiều thiết bị.
+- Đăng ký / đăng nhập; lưu phim yêu thích và lịch sử xem trên server (MySQL), dùng chung nhiều thiết bị.
 
 ## 2. Phạm vi
 
@@ -33,7 +33,7 @@ Xây dựng nhanh một ứng dụng xem phim **nhỏ, gọn, chạy được en
 │                      │                └─────────────┬─────────────┘
 │                      │                              │ EF Core
 │                      │                ┌─────────────▼─────────────┐
-│                      │                │ PostgreSQL 17 (Docker)    │
+│                      │                │ MySQL – localhost:3306    │
 │                      │                │ users, favorites,         │
 │                      │                │ watch_history, movies...  │
 │                      │                └───────────────────────────┘
@@ -42,6 +42,8 @@ Xây dựng nhanh một ứng dụng xem phim **nhỏ, gọn, chạy được en
 ```
 
 Chi tiết database: [06-database.md](06-database.md).
+
+**Vận hành**: mỗi thành phần chạy độc lập bằng lệnh (`dotnet run`, `flutter run`); MySQL là service riêng ở cổng 3306. Không đóng gói Docker cho backend/app.
 
 ### Vì sao cần backend thay vì gọi thẳng vsmov từ app?
 
@@ -72,7 +74,7 @@ Chi tiết database: [06-database.md](06-database.md).
 | Thành phần | Lựa chọn |
 |---|---|
 | Backend | .NET 10, ASP.NET Core Minimal API, `IHttpClientFactory`, `IMemoryCache`, `Microsoft.Extensions.Http.Resilience`, OpenAPI |
-| Database | PostgreSQL 17 (Docker), EF Core 10 + Npgsql, `EFCore.NamingConventions`, JWT Bearer, BCrypt, `DotNetEnv` |
+| Database | MySQL (cổng 3306), EF Core 10 + `MySql.EntityFrameworkCore`, `EFCore.NamingConventions`, JWT Bearer, BCrypt, `DotNetEnv` |
 | Mobile | Flutter 3.47 / Dart 3.13, `dio`, `flutter_riverpod`, `go_router`, `cached_network_image`, `webview_flutter`, `shared_preferences`, `flutter_secure_storage` |
 | Test | xUnit (backend), `flutter_test` (mobile) |
 

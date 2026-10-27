@@ -4,12 +4,18 @@
 
 - **Framework**: .NET 10, ASP.NET Core **Minimal API**.
 - **Vai trò**: proxy tới vsmov, chuẩn hoá dữ liệu sang DTO gọn, cache, xử lý lỗi thống nhất; quản lý tài khoản, yêu thích, lịch sử xem.
-- **Database**: PostgreSQL + EF Core – thiết kế chi tiết ở [06-database.md](06-database.md).
+- **Database**: MySQL (`localhost:3306`) + EF Core – thiết kế chi tiết ở [06-database.md](06-database.md).
+- **Chạy**: thủ công bằng `dotnet run`, không đóng gói Docker.
 - **Cấu hình**: đọc từ `backend/.env` (DotNetEnv) → biến môi trường → `IConfiguration`. `appsettings.json` chỉ giữ giá trị mặc định không nhạy cảm.
 
 ## 2. Cấu trúc thư mục
 
 ```
+btl_flutter/
+├── VsMovie.slnx                   # solution: backend + backend.Tests  →  dotnet test VsMovie.slnx
+├── backend.Tests/                 # xUnit – test mapper, JSON, MovieService với docs/samples/*.json
+└── backend/  (chi tiết bên dưới)
+
 backend/
 ├── backend.csproj                 # Sdk="Microsoft.NET.Sdk.Web"
 ├── dotnet-tools.json              # local tool dotnet-ef
@@ -22,28 +28,34 @@ backend/
 ├── Data/                          # AppDbContext, Entities/, Configurations/, Migrations/
 ├── Auth/                          # JwtOptions, TokenService, PasswordHasher
 ├── Endpoints/
+│   ├── HealthEndpoints.cs         # /health (kiểm tra kết nối MySQL)
 │   ├── HomeEndpoints.cs           # /api/home
 │   ├── MovieEndpoints.cs          # /api/movies/*
 │   ├── TaxonomyEndpoints.cs       # /api/genres, /api/countries, /api/years
-│   ├── AuthEndpoints.cs           # /api/auth/*
-│   └── MeEndpoints.cs             # /api/me, /api/me/favorites, /api/me/history
+│   ├── RequestValidator.cs        # validate page/slug/q/year/list → 400
+│   ├── CacheControlExtensions.cs  # .WithCacheControl(seconds)
+│   ├── ApiExceptionHandler.cs     # exception → ProblemDetails 400/404/502
+│   ├── AuthEndpoints.cs           # (Phase 5) /api/auth/*
+│   └── MeEndpoints.cs             # (Phase 5) /api/me, /api/me/favorites, /api/me/history
 ├── Contracts/                     # DTO trả cho mobile
 │   ├── MovieSummaryDto.cs
-│   ├── MovieDetailDto.cs
+│   ├── MovieDetailDto.cs          # + TaxonomyDto, ServerDto, EpisodeDto
 │   ├── PagedResult.cs
 │   └── HomeDto.cs
 ├── Vsmov/                         # Mọi thứ liên quan nguồn – đổi nguồn chỉ sửa ở đây
 │   ├── VsmovOptions.cs
-│   ├── VsmovClient.cs             # typed HttpClient
-│   ├── VsmovModels.cs             # model JSON thô (snake_case)
+│   ├── VsmovClient.cs             # typed HttpClient, log thời gian gọi
+│   ├── VsmovModels.cs             # model JSON thô (snake_case, mọi trường nullable)
+│   ├── VsmovJson.cs               # JsonSerializerOptions + converter "dễ dãi"
+│   ├── VsmovExceptions.cs         # VsmovNotFoundException, VsmovUnavailableException
 │   └── VsmovMapper.cs             # thô → DTO (chuẩn hoá)
 └── Services/
+    ├── MovieLists.cs              # 4 danh sách hỗ trợ + tiêu đề
     ├── MovieService.cs            # cache + gọi client + map
-    └── LibraryService.cs          # yêu thích, lịch sử (upsert movies từ MovieService)
-backend.Tests/                     # xUnit – test mapper với docs/samples/*.json
+    └── LibraryService.cs          # (Phase 5) yêu thích, lịch sử (upsert movies từ MovieService)
 ```
 
-Các endpoint `/api/auth/*` và `/api/me/*` được mô tả ở [06-database.md §5](06-database.md#5-api-sử-dụng-database).
+Các endpoint `/api/auth/*` và `/api/me/*` được mô tả ở [06-database.md §6](06-database.md#6-api-sử-dụng-database).
 
 ## 3. Endpoint cung cấp cho mobile
 
@@ -74,9 +86,16 @@ Tiền tố chung: `/api`. JSON camelCase. Phân trang bắt đầu từ `page=1
 
 | Tình huống | HTTP |
 |---|---|
-| Tham số sai | `400` |
-| Nguồn trả 404 | `404` |
-| Nguồn lỗi 5xx / timeout / JSON hỏng | `502` |
+| Tham số sai (validate hoặc không bind được, VD `page=abc`) | `400` |
+| Nguồn trả 404 / `movie` rỗng | `404` |
+| Nguồn lỗi 5xx / timeout / trả HTML thay vì JSON | `502` |
+
+`/api/home`: nếu 1 danh sách nguồn lỗi thì **bỏ section đó** (ghi log warning); chỉ trả `502` khi cả 4 đều lỗi.
+
+### Header
+- Response thành công có `Cache-Control: public, max-age=60` (thể loại/quốc gia: `3600`).
+- Nén gzip/brotli khi client gửi `Accept-Encoding`.
+- Gọi nguồn: `User-Agent: VsMovieApp/1.0`, tự giải nén gzip, retry 2 lần, timeout mỗi lần `Vsmov__TimeoutSeconds`.
 
 ## 4. DTO
 
@@ -144,11 +163,16 @@ Ví dụ `GET /api/movies/mua-he-dang-nho-2026`:
 | Mảng `actor`/`director` chứa `""` | Lọc bỏ phần tử rỗng |
 | Server không có tập | Loại bỏ server |
 | `status: true` vs `"success"` | Dùng 2 model riêng cho list phim và taxonomy; không phụ thuộc trường `status` |
+| Sai kiểu (`"7.3"`, `episode_total: 10`, `year: ""`) | `VsmovJson` dùng converter dễ dãi cho `string` / `int?` / `double?`: đọc được thì chuyển, không được thì `null` – không làm hỏng cả response |
+| Tìm kiếm rỗng trả `totalPages: 1` | `totalItems == 0` → `totalPages = 0` |
+| Thiếu `poster_url` hoặc `thumb_url` | Dùng ảnh còn lại |
+| `link_embed` rỗng / không phải `http(s)` | Bỏ tập đó (chặn `javascript:`...) |
+| Thể loại: `id` (chi tiết) vs `_id` (danh sách) | Đọc cả hai |
 
 ## 6. Cấu hình & DI (phác thảo `Program.cs`)
 
 Thứ tự ưu tiên (sau ghi đè trước): `appsettings.json` → `appsettings.{Env}.json` → **biến môi trường (`.env`)** → tham số dòng lệnh.
-Danh sách biến: [06-database.md §6.1](06-database.md#61-backend--backendenv).
+Danh sách biến: [06-database.md §7.1](06-database.md#71-backend--backendenv).
 
 ```jsonc
 // appsettings.json – chỉ mặc định, không secret
@@ -172,7 +196,7 @@ builder.Services.AddHttpClient<VsmovClient>((sp, http) =>
 .AddStandardResilienceHandler();          // retry + timeout + circuit breaker
 
 builder.Services.AddDbContext<AppDbContext>(o => o
-    .UseNpgsql(builder.Configuration.GetConnectionString("Default"))
+    .UseMySQL(builder.Configuration.GetConnectionString("Default")!)
     .UseSnakeCaseNamingConvention());
 
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
@@ -216,7 +240,7 @@ Package (đã thêm vào `backend.csproj`):
 |---|---|
 | `Microsoft.AspNetCore.OpenApi` | Sinh tài liệu OpenAPI |
 | `Microsoft.Extensions.Http.Resilience` | Retry/timeout/circuit breaker khi gọi vsmov |
-| `Npgsql.EntityFrameworkCore.PostgreSQL` | EF Core provider PostgreSQL |
+| `MySql.EntityFrameworkCore` | EF Core provider MySQL (Oracle, hỗ trợ EF Core 10) |
 | `Microsoft.EntityFrameworkCore.Design` | Hỗ trợ `dotnet ef migrations` |
 | `EFCore.NamingConventions` | Tên bảng/cột snake_case |
 | `Microsoft.AspNetCore.Authentication.JwtBearer` | Xác thực JWT |
@@ -234,13 +258,16 @@ Local tool: `dotnet-ef` (khai báo trong `dotnet-tools.json`, cài bằng `dotne
 ## 8. Chạy & kiểm thử
 
 ```bash
-docker compose up -d                       # tại btl_flutter/ – PostgreSQL
+# Yêu cầu: MySQL đang chạy ở localhost:3306
 cd backend
 dotnet run                                 # cổng theo ASPNETCORE_URLS trong .env (5080)
+curl http://localhost:5080/health          # {"status":"ok","database":"up"}
 curl http://localhost:5080/api/movies/mua-he-dang-nho-2026
 
-cd ../backend.Tests
-dotnet test
+# Test (tại btl_flutter/) – không cần mạng, không cần MySQL
+dotnet test VsMovie.slnx
 ```
+
+Request mẫu cho mọi endpoint: [backend/backend.http](../backend/backend.http) (VS Code REST Client / Rider / Visual Studio).
 
 Lưu ý khi test bằng thiết bị thật: `.env` đã đặt `ASPNETCORE_URLS=http://0.0.0.0:5080`; cần mở firewall Windows cho cổng 5080.

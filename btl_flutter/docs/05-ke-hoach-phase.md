@@ -16,8 +16,8 @@ Phase 0 ──▶ Phase 1 ──▶ Phase 2 ──▶ Phase 3 ══▶ MVP xem 
 
 | Phase | Nội dung | Ước tính | Phụ thuộc | Trạng thái |
 |---|---|---|---|---|
-| 0 | Khung dự án, `.env`, Docker DB | 0.5 ngày | – | 🟡 Một phần |
-| 1 | Backend proxy core | 1 ngày | 0 | ⬜ |
+| 0 | Khung dự án, `.env`, kết nối MySQL | 0.5 ngày | – | ✅ Xong |
+| 1 | Backend proxy core | 1 ngày | 0 | ✅ Xong |
 | 2 | Mobile nền tảng + Home + Detail | 1.5 ngày | 1 | ⬜ |
 | 3 | Player | 0.5 ngày | 2 | ⬜ |
 | 4 | Tìm kiếm + Duyệt/lọc | 1 ngày | 2 | ⬜ |
@@ -32,29 +32,31 @@ Phase 0 ──▶ Phase 1 ──▶ Phase 2 ──▶ Phase 3 ══▶ MVP xem 
 
 ## Phase 0 – Khung dự án (0.5 ngày)
 
-**Mục tiêu**: hai project chạy được, cấu hình môi trường và database sẵn sàng.
+**Mục tiêu**: hai project chạy được bằng lệnh, cấu hình môi trường và kết nối MySQL sẵn sàng.
+
+Database
+- [x] Tạo database `vsmovie` (utf8mb4) + user `vsmovie` chỉ có quyền trên `vsmovie.*` trên MySQL `localhost:3306`.
 
 Backend
 - [x] Đổi `backend.csproj` sang `Sdk="Microsoft.NET.Sdk.Web"`.
-- [x] Thêm package (OpenApi, Http.Resilience, EF Core Npgsql, EF Design, NamingConventions, JwtBearer, BCrypt, DotNetEnv) + local tool `dotnet-ef`.
-- [x] `backend/.env` (đã sinh mật khẩu DB + JWT secret ngẫu nhiên), `backend/.env.example`, `backend/.gitignore`.
-- [x] `docker-compose.yml` (PostgreSQL 17) ở `btl_flutter/`.
-- [ ] `Program.cs` tối thiểu: `Env.TraversePath().Load()` + `GET /health`.
-- [ ] `appsettings.json` (mặc định không secret), `Properties/launchSettings.json`.
-- [ ] Tạo thư mục `Endpoints/`, `Contracts/`, `Vsmov/`, `Services/`, `Data/`, `Auth/`.
+- [x] Thêm package (OpenApi, Http.Resilience, `MySql.EntityFrameworkCore`, EF Design, NamingConventions, JwtBearer, BCrypt, DotNetEnv) + local tool `dotnet-ef`.
+- [x] `backend/.env` (mật khẩu DB + JWT secret ngẫu nhiên), `backend/.env.example`, `backend/.gitignore`.
+- [x] `Program.cs`: `Env.TraversePath().Load()`, validate options (`VsmovOptions`, `JwtOptions`), `AppDbContext` + MySQL, CORS, ProblemDetails, compression, OpenAPI.
+- [x] `GET /health` kiểm tra kết nối DB (`503` nếu DB down).
+- [x] `appsettings.json` (mặc định không secret), `appsettings.Development.json`, `Properties/launchSettings.json`, `backend.http`.
+- [x] Thư mục `Endpoints/`, `Contracts/`, `Vsmov/`, `Services/`, `Data/{Entities,Configurations}`, `Auth/`.
 
 Mobile
 - [x] Thêm package: `dio flutter_riverpod go_router cached_network_image webview_flutter shared_preferences flutter_secure_storage`.
 - [x] `mobile/.env`, `mobile/.env.example`, chặn `.env` trong `mobile/.gitignore`.
-- [ ] Tạo cấu trúc `lib/app`, `lib/core`, `lib/data`, `lib/features/*` (xem [04](04-mobile-flutter.md#3-cấu-trúc-thư-mục)).
-- [ ] `theme.dart` (dark), `env.dart`, `router.dart` với 4 tab rỗng + bottom nav.
-- [ ] AndroidManifest: quyền `INTERNET`, `usesCleartextTraffic`; kiểm tra `minSdk` (≥ 21 cho webview, ≥ 23 cho secure storage).
-- [ ] Bật Windows **Developer Mode** (bắt buộc để build plugin).
+- [x] Cấu trúc `lib/app`, `lib/core`, `lib/data`, `lib/features/*` (xem [04](04-mobile-flutter.md#3-cấu-trúc-thư-mục)).
+- [x] `theme.dart` (dark), `env.dart`, `router.dart` (`StatefulShellRoute` 4 tab) + `app_shell.dart` (NavigationBar), màn hình tạm cho 4 tab.
+- [x] AndroidManifest: quyền `INTERNET`, `usesCleartextTraffic`, tên app "VsMovie"; `minSdk` mặc định 24 (đủ cho webview + secure storage).
+- [x] Widget test 4 tab; Windows Developer Mode đã bật.
 
-**DoD**
-- `docker compose up -d` → `docker compose ps` báo `healthy`.
-- `dotnet run` → `curl http://localhost:5080/health` trả `{"status":"ok"}`.
-- `flutter run --dart-define-from-file=.env` hiển thị 4 tab chuyển qua lại được.
+**DoD** (đã kiểm tra 27/10/2026)
+- ✅ `dotnet run` → `curl http://localhost:5080/health` trả `{"status":"ok","database":"up"}`; `/openapi/v1.json` → 200.
+- ✅ `flutter analyze` không lỗi, `flutter test` pass, `flutter build apk --debug --dart-define-from-file=.env` thành công.
 
 ---
 
@@ -62,22 +64,22 @@ Mobile
 
 **Mục tiêu**: toàn bộ endpoint phim ở [03 §3](03-backend-dotnet.md#3-endpoint-cung-cấp-cho-mobile) hoạt động, dữ liệu đã chuẩn hoá.
 
-- [ ] `VsmovOptions`, `VsmovClient` (typed HttpClient + `AddStandardResilienceHandler`, User-Agent).
-- [ ] `VsmovModels.cs`: model thô cho list, detail, taxonomy (`[JsonPropertyName]` snake_case).
-- [ ] `VsmovMapper.cs`: áp dụng toàn bộ quy tắc ở [03 §5](03-backend-dotnet.md#5-quy-tắc-chuẩn-hoá-vsmovmapper).
-- [ ] `Contracts/*`: DTO record.
-- [ ] `MovieService`: cache `IMemoryCache` theo bảng TTL; `/api/home` gọi 4 danh sách bằng `Task.WhenAll`.
-- [ ] Endpoints: Home, Movies (list/search/detail), Taxonomy (genres/countries/years).
-- [ ] Validate tham số; map lỗi nguồn → 404/502 ProblemDetails.
-- [ ] CORS, response compression, OpenAPI (`/openapi/v1.json` ở Development).
-- [ ] `backend.http` chứa request mẫu cho mọi endpoint.
-- [ ] `backend.Tests` (xUnit): test mapper với `docs/samples/*.json` (rating `"0.0"` → null, server name được chuẩn hoá, list có pagination).
+- [x] `VsmovOptions`, `VsmovClient` (typed HttpClient + `AddStandardResilienceHandler`, User-Agent, gzip).
+- [x] `VsmovModels.cs`: model thô cho list, detail, taxonomy (`[JsonPropertyName]` snake_case) + `VsmovJson` (converter dễ dãi).
+- [x] `VsmovMapper.cs`: áp dụng toàn bộ quy tắc ở [03 §5](03-backend-dotnet.md#5-quy-tắc-chuẩn-hoá-vsmovmapper).
+- [x] `Contracts/*`: DTO record.
+- [x] `MovieService`: cache `IMemoryCache` theo bảng TTL; `/api/home` gọi 4 danh sách song song, section lỗi thì bỏ qua.
+- [x] Endpoints: Home, Movies (list/search/detail), Taxonomy (genres/countries/years) + OpenAPI summary/tag.
+- [x] Validate tham số (`RequestValidator`); `ApiExceptionHandler` → 400/404/502 ProblemDetails.
+- [x] CORS, response compression, `Cache-Control`, OpenAPI (`/openapi/v1.json` ở Development).
+- [x] `backend.http` chứa request mẫu cho mọi endpoint.
+- [x] `backend.Tests` (xUnit, 30 test) + `VsMovie.slnx`: mapper với `docs/samples/*.json`, JSON sai kiểu, `MovieService` với HTTP giả (cache, 404, HTML thay JSON, 5xx, trang chủ lỗi một phần).
 
-**DoD**
-- `GET /api/movies/mua-he-dang-nho-2026` trả `servers[0].name == "Vietsub #1"` và có `embedUrl`.
-- `GET /api/movies/khong-ton-tai` → `404` JSON ProblemDetails (không phải HTML).
-- `GET /api/home` lần 2 phản hồi < 50ms (cache hit).
-- `dotnet test` xanh.
+**DoD** (đã kiểm tra với dữ liệu thật 27/10/2026)
+- ✅ `GET /api/movies/mua-he-dang-nho-2026` trả `servers[0].name == "Vietsub #1"` và có `embedUrl`; `so-huu` có 16 tập.
+- ✅ `GET /api/movies/khong-ton-tai` → `404` JSON ProblemDetails; `?page=abc` → `400`.
+- ✅ `GET /api/home` lần đầu ~0.5s, lần 2 ~5ms (cache hit).
+- ✅ `dotnet test VsMovie.slnx`: 30/30 pass, build 0 warning.
 
 ---
 
@@ -134,21 +136,21 @@ Mobile
 
 ## Phase 5 – Database + Auth backend (1 ngày)
 
-**Mục tiêu**: thiết kế ở [06-database.md](06-database.md) chạy thật trên PostgreSQL.
+**Mục tiêu**: thiết kế ở [06-database.md](06-database.md) chạy thật trên MySQL.
 
 - [ ] `Data/Entities/*`: `User`, `RefreshToken`, `Movie`, `Favorite`, `WatchHistory`.
-- [ ] `Data/Configurations/*`: khoá, unique, index, FK + `OnDelete` đúng bảng ở [06 §3](06-database.md#3-chi-tiết-bảng).
-- [ ] `AppDbContext` + `UseSnakeCaseNamingConvention()`; tự set `created_at`/`updated_at` trong `SaveChanges`.
-- [ ] Migration `InitialCreate` → `dotnet ef database update`; Development tự `MigrateAsync()`.
+- [ ] `Data/Configurations/*`: khoá, unique, index, FK + `OnDelete` đúng bảng ở [06 §4](06-database.md#4-chi-tiết-bảng); `char(36)` cho Guid, `datetime(6)` cho thời gian.
+- [ ] `AppDbContext`: thêm `DbSet`, converter `DateTimeKind.Utc`; tự set `created_at`/`updated_at` trong `SaveChanges`.
+- [ ] Migration `InitialCreate` → kiểm tra kiểu cột trong file migration → `dotnet ef database update`; Development tự `MigrateAsync()`.
 - [ ] `Auth/`: `JwtOptions`, `TokenService` (tạo JWT, refresh token ngẫu nhiên + hash SHA-256, xoay vòng), BCrypt.
 - [ ] `AuthEndpoints`: register, login, refresh, logout + rate limit.
 - [ ] `LibraryService`: upsert `movies` từ `MovieService`, yêu thích, lịch sử (upsert, giữ 200 bản ghi).
 - [ ] `MeEndpoints` (`RequireAuthorization`): `/api/me`, favorites, history.
 - [ ] Bổ sung `backend.http` cho các API mới (đăng ký → lấy token → gọi `/api/me/*`).
-- [ ] Test: `TokenService` (refresh đã thu hồi bị dùng lại → thu hồi tất cả), `LibraryService` với Testcontainers PostgreSQL hoặc EF InMemory.
+- [ ] Test: `TokenService` (refresh đã thu hồi bị dùng lại → thu hồi tất cả), `LibraryService` với database test riêng `vsmovie_test` trên cùng MySQL (hoặc EF InMemory cho logic thuần).
 
 **DoD**
-- `docker exec -it vsmovie-db psql -U vsmovie -d vsmovie -c "\dt"` thấy đủ 5 bảng + `__EFMigrationsHistory`.
+- `SHOW TABLES;` trong database `vsmovie` thấy đủ 5 bảng + `__EFMigrationsHistory`.
 - Đăng ký → đăng nhập → `PUT /api/me/favorites/mua-he-dang-nho-2026` → `GET /api/me/favorites` trả phim đó.
 - Gọi `/api/me` không token → `401`; email trùng khi đăng ký → `409`.
 - Refresh token xoay vòng: token cũ dùng lại → `401`.
@@ -202,7 +204,7 @@ Build
 
 | Hạng mục | Gợi ý |
 |---|---|
-| Deploy | `Dockerfile` backend (multi-stage `mcr.microsoft.com/dotnet/aspnet:10.0`) + thêm service `api` vào `docker-compose.yml`; deploy Render/Railway/Azure; app trỏ HTTPS → bỏ cleartext |
+| Deploy | `dotnet publish -c Release` → chạy như service (Windows Service / systemd / IIS) sau reverse proxy HTTPS; MySQL riêng; app trỏ HTTPS → bỏ cleartext |
 | Cache phân tán | Redis thay `IMemoryCache` khi chạy nhiều instance |
 | Quên mật khẩu | Bảng `password_reset_tokens` + gửi email (SMTP) |
 | Đăng nhập Google | `google_sign_in` + xác thực ID token ở backend |
@@ -217,6 +219,6 @@ Build
 - Nhánh: `phase-0-skeleton`, `phase-1-backend`, … merge vào `main` khi đạt DoD.
 - Commit message: `feat(backend): ...`, `feat(mobile): ...`, `docs: ...`, `test: ...`.
 - Không commit `bin/`, `obj/`, `build/`, `.dart_tool/`, **`.env`** (chỉ commit `.env.example`).
-- Thêm biến môi trường mới → cập nhật cả `.env.example` và [06-database.md §6](06-database.md#6-biến-môi-trường).
+- Thêm biến môi trường mới → cập nhật cả `.env.example` và [06-database.md §7](06-database.md#7-biến-môi-trường).
 - Đổi schema → tạo migration mới (`dotnet ef migrations add <Ten>`), **không sửa** migration đã merge; cập nhật [06-database.md](06-database.md).
 - Khi API nguồn thay đổi: cập nhật [02-api-nguon-vsmov.md](02-api-nguon-vsmov.md) + `docs/samples/` + test mapper trước, rồi mới sửa code.
