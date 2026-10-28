@@ -1,0 +1,138 @@
+# Request mẫu – mở bằng VS Code REST Client / Rider / Visual Studio
+# Refresh token nằm trong cookie "rt" (HttpOnly) – REST Client tự giữ cookie giữa các request.
+@host = http://localhost:5090
+@email = an.nguyen@vidu.vn
+@password = matkhau123
+
+### Kiểm tra backend + kết nối MySQL
+GET {{host}}/health
+
+### Tài liệu OpenAPI (chỉ Development)
+GET {{host}}/openapi/v1.json
+
+### Đăng ký (201 + cookie rt) – tạo sẵn ví "Tiền mặt" + 16 danh mục
+# @name register
+POST {{host}}/api/auth/register
+Content-Type: application/json
+
+{ "email": "{{email}}", "password": "{{password}}", "displayName": "An Nguyễn" }
+
+### Đăng nhập
+# @name login
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "{{email}}", "password": "{{password}}" }
+
+@accessToken = {{login.response.body.accessToken}}
+
+### Đổi cookie rt lấy access token mới (cookie được xoay vòng)
+POST {{host}}/api/auth/refresh
+
+### Thông tin tài khoản
+GET {{host}}/api/me
+Authorization: Bearer {{accessToken}}
+
+### Đổi tên / tiền tệ
+PUT {{host}}/api/me
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{ "displayName": "An Nguyễn Văn", "currency": "VND" }
+
+### Đổi mật khẩu (đăng xuất mọi thiết bị khác, trả phiên mới)
+PUT {{host}}/api/me/password
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{ "currentPassword": "{{password}}", "newPassword": "matkhaumoi456" }
+
+### Đăng xuất (thu hồi rt, xoá cookie)
+POST {{host}}/api/auth/logout
+
+### Lỗi validate → 400 kèm errors từng trường
+POST {{host}}/api/auth/register
+Content-Type: application/json
+
+{ "email": "sai", "password": "123", "displayName": "" }
+
+### ===== Ví =====
+GET {{host}}/api/wallets?includeArchived=false
+Authorization: Bearer {{accessToken}}
+
+### Thêm ví (màu bỏ trống → màu mặc định theo loại)
+POST {{host}}/api/wallets
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{ "name": "Vietcombank", "type": "bank", "openingBalance": 1000000 }
+
+### Lưu trữ ví (PUT gửi đủ trường)
+PUT {{host}}/api/wallets/2
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{ "name": "Vietcombank", "type": "bank", "openingBalance": 1000000, "color": "#2563eb", "isArchived": true }
+
+### ===== Danh mục =====
+GET {{host}}/api/categories?kind=expense
+Authorization: Bearer {{accessToken}}
+
+###
+POST {{host}}/api/categories
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{ "name": "Cà phê", "kind": "expense", "icon": "coffee", "color": "#92400e" }
+
+### ===== Giao dịch =====
+POST {{host}}/api/transactions
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{ "kind": "expense", "walletId": 1, "categoryId": 1, "amount": 45000, "occurredOn": "2026-10-28", "note": "Phở bò" }
+
+### Chuyển tiền
+POST {{host}}/api/transactions
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{ "kind": "transfer", "walletId": 2, "toWalletId": 1, "amount": 300000, "occurredOn": "2026-10-28", "note": "Rút ATM" }
+
+### Lọc + tìm + phân trang (bỏ from/to → tháng hiện tại theo App__TimeZone)
+GET {{host}}/api/transactions?from=2026-10-01&to=2026-10-31&kind=expense&q=phở&page=1&pageSize=20
+Authorization: Bearer {{accessToken}}
+
+### Xuất CSV (UTF-8 BOM)
+GET {{host}}/api/transactions/export?from=2026-10-01&to=2026-10-31
+Authorization: Bearer {{accessToken}}
+
+### ===== Ngân sách =====
+GET {{host}}/api/budgets?month=2026-10
+Authorization: Bearer {{accessToken}}
+
+### Đặt ngân sách (có rồi thì sửa số tiền)
+PUT {{host}}/api/budgets
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{ "month": "2026-10", "categoryId": 1, "amount": 3000000 }
+
+### Sao chép sang tháng sau (bỏ qua danh mục đã có)
+POST {{host}}/api/budgets/copy
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{ "from": "2026-10", "to": "2026-11" }
+
+### ===== Báo cáo (bỏ from/to → tháng hiện tại) =====
+GET {{host}}/api/reports/summary?from=2026-10-01&to=2026-10-31
+Authorization: Bearer {{accessToken}}
+
+###
+GET {{host}}/api/reports/by-category?from=2026-10-01&to=2026-10-31&kind=expense
+Authorization: Bearer {{accessToken}}
+
+### Xu hướng 6 tháng (groupBy=day: tối đa 92 ngày)
+GET {{host}}/api/reports/trend?from=2026-05-01&to=2026-10-31&groupBy=month
+Authorization: Bearer {{accessToken}}
