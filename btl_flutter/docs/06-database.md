@@ -78,7 +78,7 @@ erDiagram
     }
     movies {
         bigint id PK
-        int source_id UK
+        int source_id UK "nullable"
         varchar slug UK
         varchar name
         varchar origin_name
@@ -107,7 +107,7 @@ erDiagram
 
 ## 4. Chi tiết bảng
 
-Ký hiệu: `now` = `CURRENT_TIMESTAMP(6)`; mọi cột thời gian là `datetime(6)` UTC.
+Mọi cột thời gian là `datetime(6)` lưu **UTC** và **do app gán** (`TimeProvider`/`DateTime.UtcNow`) – không dùng default của DB để tránh lệ thuộc `time_zone` của session và để test chạy được trên SQLite.
 
 ### 4.1 `users`
 
@@ -119,8 +119,8 @@ Ký hiệu: `now` = `CURRENT_TIMESTAMP(6)`; mọi cột thời gian là `datetim
 | `display_name` | `varchar(100)` | NOT NULL | |
 | `avatar_url` | `varchar(500)` | NULL | |
 | `role` | `varchar(20)` | NOT NULL, default `'user'` | `user` \| `admin` |
-| `created_at` | `datetime(6)` | NOT NULL, default `now` | |
-| `updated_at` | `datetime(6)` | NOT NULL, default `now` | Cập nhật trong `SaveChanges` |
+| `created_at` | `datetime(6)` | NOT NULL | Gán trong `AppDbContext.SaveChangesAsync` |
+| `updated_at` | `datetime(6)` | NOT NULL | Cập nhật trong `SaveChangesAsync` |
 | `last_login_at` | `datetime(6)` | NULL | |
 
 ### 4.2 `refresh_tokens`
@@ -132,7 +132,7 @@ Ký hiệu: `now` = `CURRENT_TIMESTAMP(6)`; mọi cột thời gian là `datetim
 | `token_hash` | `char(64)` | NOT NULL, **UNIQUE** | SHA-256 (hex) của token – **không lưu token gốc** |
 | `device_name` | `varchar(100)` | NULL | VD "Pixel 7" |
 | `expires_at` | `datetime(6)` | NOT NULL | `now + Jwt__RefreshTokenDays` |
-| `created_at` | `datetime(6)` | NOT NULL, default `now` | |
+| `created_at` | `datetime(6)` | NOT NULL | |
 | `revoked_at` | `datetime(6)` | NULL | Set khi logout / khi xoay vòng |
 | `replaced_by_id` | `bigint` | NULL, FK → `refresh_tokens.id` ON DELETE SET NULL | Phục vụ phát hiện dùng lại token cũ |
 
@@ -143,7 +143,7 @@ Index: `ix_refresh_tokens_user_id (user_id)`.
 | Cột | Kiểu | Ràng buộc | Ghi chú |
 |---|---|---|---|
 | `id` | `bigint` AUTO_INCREMENT | PK | |
-| `source_id` | `int` | NOT NULL, **UNIQUE** | `_id` của vsmov |
+| `source_id` | `int` | NULL, **UNIQUE** | `_id` của vsmov (MySQL cho phép nhiều NULL trong unique index). Slug đổi trên nguồn mà cùng `_id` → cập nhật bản ghi cũ |
 | `slug` | `varchar(150)` | NOT NULL, **UNIQUE** | Khoá tra cứu từ API |
 | `name` | `varchar(255)` | NOT NULL | |
 | `origin_name` | `varchar(255)` | NULL | |
@@ -159,7 +159,7 @@ Index: `ix_refresh_tokens_user_id (user_id)`.
 |---|---|---|
 | `user_id` | `char(36)` | **PK (user_id, movie_id)**, FK → `users.id` ON DELETE CASCADE |
 | `movie_id` | `bigint` | PK, FK → `movies.id` ON DELETE CASCADE |
-| `created_at` | `datetime(6)` | NOT NULL, default `now` |
+| `created_at` | `datetime(6)` | NOT NULL |
 
 Index: `ix_favorites_user_id_created_at (user_id, created_at DESC)` – phân trang danh sách yêu thích.
 
@@ -174,7 +174,7 @@ Index: `ix_favorites_user_id_created_at (user_id, created_at DESC)` – phân tr
 | `episode_slug` | `varchar(50)` | NOT NULL | VD `tap-3`, `tap-full` |
 | `episode_name` | `varchar(50)` | NOT NULL | VD `3`, `Full` |
 | `position_seconds` | `int` | NULL | Dự phòng – embed player hiện không cho đọc vị trí phát |
-| `watched_at` | `datetime(6)` | NOT NULL, default `now` | |
+| `watched_at` | `datetime(6)` | NOT NULL | |
 
 - **UNIQUE (user_id, movie_id)** → mỗi phim 1 bản ghi, xem tập mới thì **upsert** (cập nhật tập + `watched_at`).
 - Index: `ix_watch_history_user_id_watched_at (user_id, watched_at DESC)`.
@@ -253,7 +253,6 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         b.Property(x => x.Id).HasColumnType("char(36)");
         b.Property(x => x.Email).HasMaxLength(255);
         b.HasIndex(x => x.Email).IsUnique();
-        b.Property(x => x.CreatedAt).HasColumnType("datetime(6)").HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
     }
 }
 
@@ -263,7 +262,6 @@ public class FavoriteConfiguration : IEntityTypeConfiguration<Favorite>
     {
         b.HasKey(x => new { x.UserId, x.MovieId });
         b.Property(x => x.UserId).HasColumnType("char(36)");
-        b.Property(x => x.CreatedAt).HasColumnType("datetime(6)").HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
         b.HasIndex(x => new { x.UserId, x.CreatedAt }).IsDescending(false, true);
         b.HasOne<User>().WithMany(u => u.Favorites).HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
         b.HasOne(x => x.Movie).WithMany().HasForeignKey(x => x.MovieId).OnDelete(DeleteBehavior.Cascade);
@@ -271,8 +269,9 @@ public class FavoriteConfiguration : IEntityTypeConfiguration<Favorite>
 }
 ```
 
-- Đọc `DateTime` từ MySQL sẽ có `Kind = Unspecified` → thêm `ValueConverter` gán `DateTimeKind.Utc` cho mọi cột `DateTime` (cấu hình chung trong `ConfigureConventions`).
-- Sau khi `migrations add`, **mở file migration kiểm tra** kiểu cột (`char(36)`, `datetime(6)`) trước khi `database update`.
+- `ConfigureConventions`: mọi `DateTime` → `datetime(6)` + `ValueConverter` gán `DateTimeKind.Utc` khi đọc; mọi `Guid` → `char(36)`.
+- Provider Oracle bỏ qua `IsDescending` (index tạo tăng dần) – không ảnh hưởng vì InnoDB đọc ngược index cho `ORDER BY ... DESC`.
+- Đã kiểm tra SQL sinh ra (`dotnet ef migrations script`): đúng `char(36)`, `datetime(6)`, `char(64)`, unique/FK như bảng trên. Migration: `backend/Data/Migrations/*_InitialCreate.cs`.
 
 ```csharp
 // Program.cs (đã có ở Phase 0)
@@ -293,10 +292,11 @@ Tất cả `/api/me/*` yêu cầu header `Authorization: Bearer <accessToken>`.
 | POST | `/api/auth/logout` | `{ refreshToken }` | Thu hồi refresh token |
 | GET | `/api/me` | – | Thông tin người dùng |
 | GET | `/api/me/favorites?page=` | – | `PagedResult<MovieSummaryDto>` (mới nhất trước) |
-| GET | `/api/me/favorites/{slug}` | – | `200 { isFavorite: true }` / `404` |
+| GET | `/api/me/favorites/{slug}` | – | `200 { isFavorite: true/false }` |
 | PUT | `/api/me/favorites/{slug}` | – | Thêm (idempotent) → `204` |
 | DELETE | `/api/me/favorites/{slug}` | – | Xoá → `204` |
 | GET | `/api/me/history?page=` | – | `PagedResult<WatchHistoryDto>` |
+| GET | `/api/me/history/{slug}` | – | `WatchHistoryDto` của phim đó / `404` nếu chưa xem (nút "Xem tiếp") |
 | PUT | `/api/me/history/{slug}` | `{ serverName, episodeSlug, episodeName, positionSeconds? }` | Upsert → `204` |
 | DELETE | `/api/me/history/{slug}` | – | Xoá 1 phim khỏi lịch sử |
 | DELETE | `/api/me/history` | – | Xoá toàn bộ lịch sử |
@@ -391,7 +391,7 @@ dotnet ef database drop --force
 dotnet ef database update
 ```
 
-- Môi trường Development: gọi `db.Database.MigrateAsync()` khi khởi động để tự áp migration (thêm ở Phase 5).
+- Môi trường Development: `Program.cs` gọi `db.Database.MigrateAsync()` khi khởi động (MySQL chưa lên thì ghi log lỗi, app vẫn chạy và `/health` báo `database: down`).
 - `dotnet ef` cũng đọc `.env` vì `Program.cs` gọi `Env.Load()` trước khi build host.
 - `dotnet ef database drop` cần quyền DROP – user `vsmovie` có `ALL PRIVILEGES` trên `vsmovie.*` nên đủ; nếu tạo lại DB sau khi drop, EF tạo với charset mặc định của server (`utf8mb4`).
 
@@ -415,4 +415,20 @@ ON DUPLICATE KEY UPDATE
     watched_at   = UTC_TIMESTAMP(6);
 ```
 
-> Mặc định `CURRENT_TIMESTAMP(6)` trả giờ theo `time_zone` của session. Để chắc chắn là UTC: luôn gán thời gian từ app (`DateTime.UtcNow`) thay vì dựa vào default của DB, hoặc thêm `;ConnectionTimeZone=UTC` nếu provider hỗ trợ.
+> Thời gian luôn do app gán (UTC) nên không phụ thuộc `time_zone` của MySQL. Service thực tế dùng EF (đọc → sửa → `SaveChanges`) thay cho `ON DUPLICATE KEY`; unique index `(user_id, movie_id)` là chốt chặn cuối khi 2 request chạy song song.
+
+## 10. Mã nguồn & kiểm thử (Phase 5 – 6)
+
+| Phần | File |
+|---|---|
+| Entity / cấu hình bảng | `backend/Data/Entities/*.cs`, `backend/Data/Configurations/EntityConfigurations.cs` |
+| DbContext + quy ước UTC | `backend/Data/AppDbContext.cs` |
+| JWT + refresh token | `backend/Auth/TokenService.cs`, `backend/Auth/JwtOptions.cs` |
+| Đăng ký / đăng nhập / xoay vòng | `backend/Services/AuthService.cs` → `Endpoints/AuthEndpoints.cs` |
+| Yêu thích / lịch sử | `backend/Services/LibraryService.cs` → `Endpoints/MeEndpoints.cs` |
+| Mobile: lưu token, tự refresh | `mobile/lib/core/token_storage.dart`, `mobile/lib/core/auth_interceptor.dart` |
+| Mobile: state | `mobile/lib/features/auth/auth_providers.dart`, `mobile/lib/features/library/library_providers.dart` |
+
+- **Test backend** (`backend.Tests/AuthApiTests.cs`, `LibraryApiTests.cs`): chạy toàn bộ API qua `WebApplicationFactory`, DB là **SQLite in-memory** (user `vsmovie` không có quyền tạo DB test trên MySQL), vsmov giả trả `docs/samples`.
+- **Đã chạy thật với MySQL** (27/10/2026): đăng ký → 409 email trùng → 401 sai mật khẩu → yêu thích / lịch sử → refresh xoay vòng → dùng lại token cũ thu hồi cả 2 token → `/api/auth` request thứ 11/phút trả `429`. Tiếng Việt lưu đúng utf8mb4 (`Mùa` = `4D C3 B9`).
+- Giới hạn `/api/auth/*`: cấu hình bằng `RateLimit__AuthPermitPerMinute` (mặc định 10).

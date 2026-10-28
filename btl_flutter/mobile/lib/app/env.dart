@@ -3,15 +3,9 @@
 class Env {
   const Env._();
 
-  static const apiBaseUrl = String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue: 'http://10.0.2.2:5080',
-  );
+  static const apiBaseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: 'http://10.0.2.2:5080');
 
-  static const apiTimeoutSeconds = int.fromEnvironment(
-    'API_TIMEOUT_SECONDS',
-    defaultValue: 15,
-  );
+  static const apiTimeoutSeconds = int.fromEnvironment('API_TIMEOUT_SECONDS', defaultValue: 15);
 
   static const playerAllowedHostSuffix = String.fromEnvironment(
     'PLAYER_ALLOWED_HOST_SUFFIX',

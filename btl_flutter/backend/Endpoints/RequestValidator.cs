@@ -50,6 +50,43 @@ internal sealed partial class RequestValidator
         return this;
     }
 
+    public RequestValidator Email(string? email, out string value)
+    {
+        value = email?.Trim() ?? "";
+        if (value.Length > 255 || !EmailRegex().IsMatch(value)) _errors["email"] = ["Email không hợp lệ"];
+        return this;
+    }
+
+    public RequestValidator Password(string? password, out string value, bool checkStrength = true)
+    {
+        value = password ?? "";
+        if (value.Length == 0) _errors["password"] = ["Vui lòng nhập mật khẩu"];
+        else if (checkStrength && value.Length is < 8 or > 100) _errors["password"] = ["Mật khẩu phải từ 8 đến 100 ký tự"];
+        return this;
+    }
+
+    public RequestValidator Text(string field, string? input, int maxLength, out string value, string label)
+    {
+        value = input?.Trim() ?? "";
+        if (value.Length == 0 || value.Length > maxLength) _errors[field] = [$"{label} phải từ 1 đến {maxLength} ký tự"];
+        return this;
+    }
+
+    public RequestValidator OptionalText(string field, string? input, int maxLength, string label)
+    {
+        if (input is not null && input.Trim().Length > maxLength) _errors[field] = [$"{label} tối đa {maxLength} ký tự"];
+        return this;
+    }
+
+    public RequestValidator Range(string field, int? input, int min, int max)
+    {
+        if (input is { } v && (v < min || v > max)) _errors[field] = [$"{field} phải trong khoảng {min}..{max}"];
+        return this;
+    }
+
     [GeneratedRegex("^[a-z0-9-]{1,150}$")]
     private static partial Regex SlugRegex();
+
+    [GeneratedRegex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$")]
+    private static partial Regex EmailRegex();
 }

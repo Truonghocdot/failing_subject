@@ -13,7 +13,7 @@
 ```
 btl_flutter/
 ├── VsMovie.slnx                   # solution: backend + backend.Tests  →  dotnet test VsMovie.slnx
-├── backend.Tests/                 # xUnit – test mapper, JSON, MovieService với docs/samples/*.json
+├── backend.Tests/                 # xUnit – mapper, JSON, MovieService; ApiFactory (WebApplicationFactory + SQLite) cho Auth/Library API
 └── backend/  (chi tiết bên dưới)
 
 backend/
@@ -25,8 +25,8 @@ backend/
 ├── appsettings.Development.json
 ├── Properties/launchSettings.json
 ├── backend.http                   # file test request (VS Code REST Client / Rider / VS)
-├── Data/                          # AppDbContext, Entities/, Configurations/, Migrations/
-├── Auth/                          # JwtOptions, TokenService, PasswordHasher
+├── Data/                          # AppDbContext, Entities/, Configurations/, Migrations/ (InitialCreate)
+├── Auth/                          # JwtOptions, TokenService (JWT + refresh token), ClaimsPrincipal.GetUserId()
 ├── Endpoints/
 │   ├── HealthEndpoints.cs         # /health (kiểm tra kết nối MySQL)
 │   ├── HomeEndpoints.cs           # /api/home
@@ -35,8 +35,8 @@ backend/
 │   ├── RequestValidator.cs        # validate page/slug/q/year/list → 400
 │   ├── CacheControlExtensions.cs  # .WithCacheControl(seconds)
 │   ├── ApiExceptionHandler.cs     # exception → ProblemDetails 400/404/502
-│   ├── AuthEndpoints.cs           # (Phase 5) /api/auth/*
-│   └── MeEndpoints.cs             # (Phase 5) /api/me, /api/me/favorites, /api/me/history
+│   ├── AuthEndpoints.cs           # /api/auth/* (rate limit "auth")
+│   └── MeEndpoints.cs             # /api/me, /api/me/favorites, /api/me/history (RequireAuthorization)
 ├── Contracts/                     # DTO trả cho mobile
 │   ├── MovieSummaryDto.cs
 │   ├── MovieDetailDto.cs          # + TaxonomyDto, ServerDto, EpisodeDto
@@ -52,7 +52,9 @@ backend/
 └── Services/
     ├── MovieLists.cs              # 4 danh sách hỗ trợ + tiêu đề
     ├── MovieService.cs            # cache + gọi client + map
-    └── LibraryService.cs          # (Phase 5) yêu thích, lịch sử (upsert movies từ MovieService)
+    ├── AuthService.cs             # đăng ký, đăng nhập, xoay vòng refresh token, đăng xuất
+    ├── LibraryService.cs          # yêu thích, lịch sử (đồng bộ bảng movies từ MovieService)
+    └── ApiProblemException.cs     # lỗi nghiệp vụ 401/409 → ProblemDetails
 ```
 
 Các endpoint `/api/auth/*` và `/api/me/*` được mô tả ở [06-database.md §6](06-database.md#6-api-sử-dụng-database).

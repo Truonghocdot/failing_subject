@@ -41,3 +41,71 @@ GET {{host}}/api/years/2025/movies?page=1
 
 ### Tham số sai → 400
 GET {{host}}/api/movies?list=abc&page=0
+
+### ===== Tài khoản (Phase 5) =====
+# Đăng ký → copy accessToken / refreshToken vào 2 biến dưới
+@accessToken = dan-access-token-vao-day
+@refreshToken = dan-refresh-token-vao-day
+
+### Đăng ký
+POST {{host}}/api/auth/register
+Content-Type: application/json
+
+{ "email": "demo@vsmovie.vn", "password": "matkhau123", "displayName": "Demo", "deviceName": "REST client" }
+
+### Đăng nhập
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "demo@vsmovie.vn", "password": "matkhau123" }
+
+### Làm mới token (token cũ bị thu hồi)
+POST {{host}}/api/auth/refresh
+Content-Type: application/json
+
+{ "refreshToken": "{{refreshToken}}" }
+
+### Đăng xuất
+POST {{host}}/api/auth/logout
+Content-Type: application/json
+
+{ "refreshToken": "{{refreshToken}}" }
+
+### Thông tin tài khoản
+GET {{host}}/api/me
+Authorization: Bearer {{accessToken}}
+
+### Thêm yêu thích
+PUT {{host}}/api/me/favorites/mua-he-dang-nho-2026
+Authorization: Bearer {{accessToken}}
+
+### Danh sách yêu thích
+GET {{host}}/api/me/favorites?page=1
+Authorization: Bearer {{accessToken}}
+
+### Phim có trong yêu thích?
+GET {{host}}/api/me/favorites/mua-he-dang-nho-2026
+Authorization: Bearer {{accessToken}}
+
+### Bỏ yêu thích
+DELETE {{host}}/api/me/favorites/mua-he-dang-nho-2026
+Authorization: Bearer {{accessToken}}
+
+### Ghi lịch sử xem
+PUT {{host}}/api/me/history/so-huu
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{ "serverName": "Vietsub #1", "episodeSlug": "tap-3", "episodeName": "3" }
+
+### Lịch sử xem
+GET {{host}}/api/me/history?page=1
+Authorization: Bearer {{accessToken}}
+
+### Tập xem gần nhất của 1 phim (404 nếu chưa xem)
+GET {{host}}/api/me/history/so-huu
+Authorization: Bearer {{accessToken}}
+
+### Xoá toàn bộ lịch sử
+DELETE {{host}}/api/me/history
+Authorization: Bearer {{accessToken}}

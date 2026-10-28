@@ -1,3 +1,4 @@
+using backend.Services;
 using backend.Vsmov;
 using Microsoft.AspNetCore.Diagnostics;
 
@@ -14,6 +15,7 @@ public sealed class ApiExceptionHandler(IProblemDetailsService problemDetails) :
         var (status, title, detail) = exception switch
         {
             BadHttpRequestException bad => (bad.StatusCode, "Tham số không hợp lệ", bad.Message),
+            ApiProblemException problem => (problem.StatusCode, problem.Title, problem.Message),
             VsmovNotFoundException => (StatusCodes.Status404NotFound, "Không tìm thấy", exception.Message),
             VsmovUnavailableException => (StatusCodes.Status502BadGateway, "Lỗi nguồn dữ liệu", exception.Message),
             _ => (0, null, null),

@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mobile/app/app.dart';
+
+import 'support/fakes.dart';
 
 void main() {
   testWidgets('Hiển thị 4 tab và chuyển tab được', (tester) async {
-    await tester.pumpWidget(const ProviderScope(child: VsMovieApp()));
-    await tester.pumpAndSettle();
+    await pumpApp(tester, FakeMovieRepository());
 
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(find.byType(NavigationDestination), findsNWidgets(4));
@@ -14,10 +13,14 @@ void main() {
 
     await tester.tap(find.text('Tìm kiếm'));
     await tester.pumpAndSettle();
-    expect(find.text('Tìm phim theo tên – Phase 4'), findsOneWidget);
+    expect(find.text('Nhập tên phim để tìm kiếm'), findsOneWidget);
+
+    await tester.tap(find.text('Khám phá'));
+    await tester.pumpAndSettle();
+    expect(find.text('Thể loại'), findsOneWidget);
 
     await tester.tap(find.text('Thư viện'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('Phase 6'), findsOneWidget);
+    expect(find.text('Lưu phim yêu thích & xem tiếp'), findsOneWidget); // khách
   });
 }

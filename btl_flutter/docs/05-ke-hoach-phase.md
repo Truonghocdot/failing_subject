@@ -18,11 +18,11 @@ Phase 0 ──▶ Phase 1 ──▶ Phase 2 ──▶ Phase 3 ══▶ MVP xem 
 |---|---|---|---|---|
 | 0 | Khung dự án, `.env`, kết nối MySQL | 0.5 ngày | – | ✅ Xong |
 | 1 | Backend proxy core | 1 ngày | 0 | ✅ Xong |
-| 2 | Mobile nền tảng + Home + Detail | 1.5 ngày | 1 | ⬜ |
-| 3 | Player | 0.5 ngày | 2 | ⬜ |
-| 4 | Tìm kiếm + Duyệt/lọc | 1 ngày | 2 | ⬜ |
-| 5 | Database + Auth (backend) | 1 ngày | 1 | ⬜ |
-| 6 | Mobile: Đăng nhập + Yêu thích + Lịch sử | 1 ngày | 3, 5 | ⬜ |
+| 2 | Mobile nền tảng + Home + Detail | 1.5 ngày | 1 | ✅ Xong (chờ chạy thử trên máy) |
+| 3 | Player | 0.5 ngày | 2 | ✅ Xong (chờ phát thử trên máy) |
+| 4 | Tìm kiếm + Duyệt/lọc | 1 ngày | 2 | ✅ Xong |
+| 5 | Database + Auth (backend) | 1 ngày | 1 | ✅ Xong |
+| 6 | Mobile: Đăng nhập + Yêu thích + Lịch sử | 1 ngày | 3, 5 | ✅ Xong (chờ chạy thử trên máy) |
 | 7 | Hoàn thiện, test, build | 1 ngày | 4, 6 | ⬜ |
 | 8 | Mở rộng (tuỳ chọn) | – | 7 | ⬜ |
 
@@ -87,18 +87,23 @@ Mobile
 
 **Mục tiêu**: mở app thấy danh sách phim thật, bấm vào xem được chi tiết và danh sách tập.
 
-- [ ] `core/api_client.dart`: Dio (baseUrl, timeout từ `Env`), chuyển lỗi → `AppException(message)` tiếng Việt.
-- [ ] `data/models/*`: `MovieSummary`, `MovieDetail`, `Server`, `Episode`, `Taxonomy`, `PagedResult<T>`, `HomeSection` + `fromJson`.
-- [ ] `data/movie_repository.dart`: `getHome`, `getList`, `search`, `getDetail`, `getGenres`, `getCountries`, `getByGenre/Country/Year`.
-- [ ] Widget chung: `MovieCard` (ảnh 2:3, tên 2 dòng, năm, điểm), `SectionRow` (ListView ngang), `ErrorView` (nút Thử lại), `LoadingView`.
-- [ ] `HomeScreen`: banner + 4 section từ `homeProvider`; pull-to-refresh (`ref.invalidate`).
-- [ ] `DetailScreen`: header ảnh, thông tin, mô tả thu gọn, chip thể loại, **TabBar server + lưới tập** (phim lẻ chỉ có nút "Xem phim").
-- [ ] Route `/movie/:slug`.
+- [x] `core/api_client.dart`: Dio (baseUrl, timeout từ `Env`), chuyển lỗi → `AppException(message)` tiếng Việt (400/404/502, timeout, mất kết nối, JSON sai).
+- [x] `data/models/*`: `MovieSummary`, `MovieDetail`, `Server`, `Episode`, `Taxonomy`, `PagedResult<T>`, `HomeSection` + `fromJson`.
+- [x] `data/movie_repository.dart`: `getHome`, `getList`, `search`, `getDetail`, `getGenres`, `getCountries`, `getByGenre/Country/Year`.
+- [x] Widget chung: `AppNetworkImage` (cache + giới hạn decode), `MovieCard`, `RatingBadge`, `SectionRow`, `ErrorView`, `LoadingView`, `ExpandableText`.
+- [x] `HomeScreen`: banner (5 phim mới, PageView) + 4 section từ `homeProvider`; pull-to-refresh.
+- [x] `DetailScreen`: ảnh nền, poster, tên, nhãn (năm/chất lượng/ngôn ngữ/tập/thời lượng/trạng thái), lịch chiếu, mô tả thu gọn, thể loại, quốc gia/đạo diễn/diễn viên, **chọn server (ChoiceChip) + lưới tập** (phim lẻ chỉ có nút "Xem phim").
+- [x] Route `/movie/:slug` (ngoài shell, che bottom nav).
+- [x] Tắt auto-retry của Riverpod 3 (`ProviderScope(retry: ...)`), `dart format` page width 120.
+- [x] Test: 19 test (ApiClient lỗi, model, Home, Detail, điều hướng) với repository giả.
 
-**DoD**
-- Trên Android emulator: Home hiển thị ≥ 4 hàng phim có ảnh.
-- Bấm vào "Mùa Hè Đáng Nhớ" → thấy thông tin, tab "Vietsub #1", nút tập 1.
-- Tắt backend → Home hiện ErrorView, bấm Thử lại hoạt động khi bật lại.
+> Bấm tập hiện SnackBar tạm – Phase 3 thay bằng mở Player. Bấm chip thể loại – Phase 4.
+
+**DoD** (27/10/2026)
+- ✅ Model parse đúng JSON thật từ backend: Home 4 hàng (24/20/20/18), `so-huu` 16 tập, `chimera` chỉ nút "Xem phim", 404 → "Không tìm thấy nội dung".
+- ✅ Widget test: Detail phim bộ có server "Vietsub #1" + lưới tập, đổi server đổi lưới; lỗi → ErrorView, Thử lại tải lại được.
+- ✅ `flutter analyze` sạch, `flutter test` 19/19, `flutter build apk --debug --dart-define-from-file=.env` thành công.
+- ⬜ Chạy thử trên Android emulator/máy thật (cần chạy tay: backend + `flutter run --dart-define-from-file=.env`).
 
 ---
 
@@ -106,31 +111,37 @@ Mobile
 
 **Mục tiêu**: phát được phim (chế độ khách).
 
-- [ ] `PlayerScreen` với `webview_flutter` (xem [04 §5](04-mobile-flutter.md#5-player-webview)).
-- [ ] Xoay ngang + immersive khi vào, khôi phục khi thoát.
-- [ ] Chặn điều hướng ngoài `Env.playerHost`.
-- [ ] Thanh điều khiển overlay: Quay lại, tên phim – tập, Tập trước / Tập sau (theo server đang chọn).
-- [ ] Indicator loading khi WebView đang tải; lỗi tải → ErrorView.
+- [x] `PlayerScreen` (route `/watch/:slug?server=&ep=`) + `EmbedPlayer` (`webview_flutter`, xem [04 §5](04-mobile-flutter.md#5-player-webview)).
+- [x] Xoay ngang + immersive khi vào, khôi phục khi thoát.
+- [x] Chặn điều hướng khung chính ngoài `Env.playerAllowedHostSuffix` (cả `intent://`, `market://`, domain giả mạo).
+- [x] Thanh điều khiển overlay tự ẩn sau 4s: Quay lại, tên phim – tập • server, Tập trước / Tập sau, Chọn tập (bottom sheet, đổi được server), nút hiện lại.
+- [x] Loading khi WebView đang tải; lỗi khung chính → ErrorView + Thử lại.
+- [x] Android: fullscreen của JW Player (`setCustomWidgetCallbacks`), Back thoát fullscreen trước.
+- [x] Trang chi tiết: bấm tập / "Xem Tập 1" / "Xem phim" → Player.
+- [x] Test: chuyển tập trước/sau, chọn tập server khác, tự ẩn điều khiển, tập không tồn tại, bộ lọc điều hướng.
 
-**DoD**
-- Phát được tập 1 "Mùa Hè Đáng Nhớ" và một phim lẻ (VD `chimera`).
-- Chuyển tập sau hoạt động với phim bộ nhiều tập (VD `so-huu`, 16 tập).
-- Bấm quảng cáo/popup không làm WebView rời khỏi player.
+**DoD** (27/10/2026)
+- ✅ Widget test: phát đúng `embedUrl` từ Detail, tập sau/trước, nút tắt ở tập đầu/cuối, đổi server qua bottom sheet.
+- ✅ Trang embed thật không redirect, tài nguyên chỉ từ `*.streamvsmov.com`/CDN → không bị chặn nhầm.
+- ✅ `flutter build apk --debug` thành công.
+- ⬜ Phát thật trên Android emulator/máy thật (tập 1 "Mùa Hè Đáng Nhớ", `chimera`, chuyển tập `so-huu`) – cần chạy tay.
 
 ---
 
 ## Phase 4 – Tìm kiếm + Duyệt/lọc (1 ngày)
 
-- [ ] `PagedNotifier` dùng chung (items, page, hasMore, loadMore, refresh).
-- [ ] `BrowseScreen` (lưới 3 cột, infinite scroll) nhận `kind` + `value`: `list` / `genre` / `country` / `year`.
-- [ ] Tab Khám phá: chip danh sách (Mới / Bộ / Lẻ / Chiếu rạp), thể loại, quốc gia (Hàn Quốc, Trung Quốc, Âu Mỹ, Nhật Bản, Việt Nam… + "Xem thêm"), năm.
-- [ ] Chip thể loại/quốc gia ở Detail → điều hướng sang Browse đã lọc.
-- [ ] "Xem tất cả" ở Home → Browse tương ứng.
-- [ ] `SearchScreen`: TextField autofocus, debounce 400ms, tối thiểu 2 ký tự, infinite scroll, trạng thái "Không tìm thấy", từ khoá gần đây (`shared_preferences`).
+- [x] `PagedMoviesNotifier` (AsyncNotifier family theo `MovieQuery`): trang 1, `loadMore`, bỏ trùng, trang rỗng → dừng, lỗi tải thêm giữ dữ liệu.
+- [x] `MovieGrid` (≥ 3 cột theo bề rộng, infinite scroll, pull-to-refresh, footer loading / "Tải tiếp" / "Đã hiển thị N phim") + `MovieListScreen` (route `/list/:kind/:value?title=`).
+- [x] Tab Khám phá: chip danh sách (Mới / Bộ / Lẻ / Chiếu rạp), thể loại (API), 12 quốc gia phổ biến + "Tất cả quốc gia" (bottom sheet 187 quốc gia), 15 năm gần nhất.
+- [x] Chip thể loại **và quốc gia** ở Detail → lưới phim đã lọc.
+- [x] "Xem tất cả" ở mỗi hàng trang chủ → lưới tương ứng.
+- [x] `SearchScreen`: debounce 400ms, tối thiểu 2 ký tự, infinite scroll, "Không tìm thấy...", từ khoá gần đây (tối đa 10, lưu khi Enter hoặc mở kết quả, xoá từng mục / tất cả).
+- [x] Test: provider phân trang, `MovieQuery`, Khám phá, "Xem tất cả", chip Detail, tìm kiếm (debounce, rỗng, gần đây).
 
-**DoD**
-- Tìm "mua he" ra "Mùa Hè Đáng Nhớ"; cuộn tải thêm trang 2, 3.
-- Bấm chip "Lãng Mạn" ở Detail → lưới phim lãng mạn.
+**DoD** (27/10/2026)
+- ✅ Dữ liệu thật qua backend: tìm "mùa hè" → "Mùa Hè Đáng Nhớ" đầu tiên, 49 kết quả / 3 trang, trang 2 không trùng trang 1; thể loại `lang-man` 99 trang; `han-quoc`, năm 2025, chiếu rạp đều tải 2 trang đúng.
+- ✅ Widget test: bấm chip "Chính Kịch" ở Detail → lưới phim thể loại đó.
+- ✅ `flutter analyze` sạch, `flutter test` 37/37.
 
 ---
 
@@ -138,41 +149,46 @@ Mobile
 
 **Mục tiêu**: thiết kế ở [06-database.md](06-database.md) chạy thật trên MySQL.
 
-- [ ] `Data/Entities/*`: `User`, `RefreshToken`, `Movie`, `Favorite`, `WatchHistory`.
-- [ ] `Data/Configurations/*`: khoá, unique, index, FK + `OnDelete` đúng bảng ở [06 §4](06-database.md#4-chi-tiết-bảng); `char(36)` cho Guid, `datetime(6)` cho thời gian.
-- [ ] `AppDbContext`: thêm `DbSet`, converter `DateTimeKind.Utc`; tự set `created_at`/`updated_at` trong `SaveChanges`.
-- [ ] Migration `InitialCreate` → kiểm tra kiểu cột trong file migration → `dotnet ef database update`; Development tự `MigrateAsync()`.
-- [ ] `Auth/`: `JwtOptions`, `TokenService` (tạo JWT, refresh token ngẫu nhiên + hash SHA-256, xoay vòng), BCrypt.
-- [ ] `AuthEndpoints`: register, login, refresh, logout + rate limit.
-- [ ] `LibraryService`: upsert `movies` từ `MovieService`, yêu thích, lịch sử (upsert, giữ 200 bản ghi).
-- [ ] `MeEndpoints` (`RequireAuthorization`): `/api/me`, favorites, history.
-- [ ] Bổ sung `backend.http` cho các API mới (đăng ký → lấy token → gọi `/api/me/*`).
-- [ ] Test: `TokenService` (refresh đã thu hồi bị dùng lại → thu hồi tất cả), `LibraryService` với database test riêng `vsmovie_test` trên cùng MySQL (hoặc EF InMemory cho logic thuần).
+- [x] `Data/Entities/*`: `User`, `RefreshToken`, `Movie`, `Favorite`, `WatchHistory`.
+- [x] `Data/Configurations/*`: khoá, unique, index, FK + `OnDelete` đúng bảng ở [06 §4](06-database.md#4-chi-tiết-bảng); `char(36)` cho Guid, `datetime(6)` cho thời gian (quy ước chung trong `ConfigureConventions`).
+- [x] `AppDbContext`: `DbSet`, converter `DateTimeKind.Utc`; tự set `created_at`/`updated_at` của `users` trong `SaveChangesAsync`.
+- [x] Migration `InitialCreate` (đã soát SQL) → `dotnet ef database update` lên MySQL; Development tự `MigrateAsync()`.
+- [x] `Auth/`: `TokenService` (JWT HS256, refresh token 64 byte + SHA-256), BCrypt work factor 11.
+- [x] `AuthService` + `AuthEndpoints`: register, login, refresh (xoay vòng, dùng lại token cũ → thu hồi mọi phiên), logout; rate limit `/api/auth/*` 10/phút/IP.
+- [x] `LibraryService`: đồng bộ `movies` từ `MovieService` (7 ngày; nguồn lỗi thì dùng bản cũ; slug đổi cùng `_id` thì cập nhật), yêu thích idempotent, lịch sử upsert + giữ 200 bản ghi.
+- [x] `MeEndpoints` (`RequireAuthorization`): `/api/me`, favorites (list/status/put/delete), history (list/entry/put/delete/clear).
+- [x] `backend.http` có đủ request đăng ký → token → `/api/me/*`.
+- [x] Test (`WebApplicationFactory` + SQLite in-memory, vì user MySQL không tạo được DB test): 15 test mới – đăng ký/đăng nhập/409/401/400, refresh xoay vòng + phát hiện dùng lại, logout, hash token, yêu thích (idempotent, tách user, phim lưu 1 lần, 404), lịch sử (upsert, thứ tự, xoá, cắt 200).
 
-**DoD**
-- `SHOW TABLES;` trong database `vsmovie` thấy đủ 5 bảng + `__EFMigrationsHistory`.
-- Đăng ký → đăng nhập → `PUT /api/me/favorites/mua-he-dang-nho-2026` → `GET /api/me/favorites` trả phim đó.
-- Gọi `/api/me` không token → `401`; email trùng khi đăng ký → `409`.
-- Refresh token xoay vòng: token cũ dùng lại → `401`.
+**DoD** (27/10/2026)
+- ✅ `SHOW TABLES` trên MySQL: 5 bảng + `__EFMigrationsHistory`, collation `utf8mb4_unicode_ci`.
+- ✅ Chạy thật: đăng ký → `PUT /api/me/favorites/...` → `GET /api/me/favorites` trả phim; tiếng Việt lưu đúng.
+- ✅ `/api/me` không token → `401`; email trùng → `409`; sai mật khẩu → `401` cùng thông điệp với email không tồn tại.
+- ✅ Refresh token cũ dùng lại → `401` và token mới cũng bị thu hồi; request `/api/auth` thứ 11/phút → `429`.
+- ✅ `dotnet test VsMovie.slnx`: 45/45.
 
 ---
 
 ## Phase 6 – Mobile: Đăng nhập + Yêu thích + Lịch sử (1 ngày)
 
-- [ ] `core/token_storage.dart` (`flutter_secure_storage`).
-- [ ] `AuthInterceptor` cho Dio: gắn Bearer; `401` → refresh 1 lần (khoá tránh gọi song song) → thử lại; thất bại → đăng xuất.
-- [ ] `AuthRepository`, `AuthNotifier` (khôi phục phiên khi mở app bằng `GET /api/me`).
-- [ ] `LoginScreen`, `RegisterScreen` (validate, hiện lỗi từ ProblemDetails).
-- [ ] `go_router` redirect: thao tác cần đăng nhập → `/login?from=...`, đăng nhập xong quay lại.
-- [ ] Detail: nút ♥ (`isFavoriteProvider`, cập nhật lạc quan), nút "Xem tiếp – Tập X".
-- [ ] Player: ghi lịch sử khi mở tập (nếu đã đăng nhập).
-- [ ] Home: hàng "Xem tiếp" ở đầu nếu có lịch sử.
-- [ ] `LibraryScreen`: thông tin tài khoản + Đăng xuất; tab Yêu thích / Lịch sử (infinite scroll, vuốt để xoá, xoá tất cả lịch sử).
+- [x] `core/token_storage.dart` (`flutter_secure_storage`, cache trong bộ nhớ) + `InMemoryTokenStorage` cho test.
+- [x] `AuthInterceptor` (`QueuedInterceptor`): gắn Bearer; `401` → refresh **một lần** cho nhiều request song song → thử lại; refresh bị từ chối → xoá token + sự kiện hết phiên; mất mạng khi refresh → giữ phiên.
+- [x] `ApiClient`: thêm POST/PUT/DELETE, `auth: false` cho API đăng nhập; thông điệp 400 (lỗi trường đầu tiên) / 401 / 409 / 429.
+- [x] `AuthRepository`, `AuthNotifier` (khôi phục phiên bằng `GET /api/me`; 401 → về khách; lỗi mạng → Thử lại).
+- [x] `LoginScreen`, `RegisterScreen` (validate tại chỗ khớp backend, hiện lỗi server, chuyển qua lại).
+- [x] Cần đăng nhập → mở `/login` bằng `push`, đăng nhập xong `pop` về đúng màn trước (thay cho redirect `?from=`).
+- [x] Detail: nút ♥ (`favoriteStatusProvider`, cập nhật lạc quan, lỗi thì hoàn lại); nút "Xem tiếp Tập X" mở đúng server + tập; tập đã xem tô nổi.
+- [x] Player: ghi lịch sử khi mở/chuyển tập (chỉ khi đăng nhập), làm mới "Xem tiếp" ở mọi nơi.
+- [x] Home: hàng "Xem tiếp" (12 phim gần nhất, dòng phụ "Tập X").
+- [x] `LibraryScreen`: khách → mời đăng nhập/đăng ký; đã đăng nhập → avatar + tên + email + Đăng xuất; tab Yêu thích (`MovieGrid` với `MovieQuery.favorites`) / Lịch sử (vuốt để xoá, Xoá tất cả, cuộn tải thêm).
+- [x] Refactor: `Paged<T>` + `PagedNotifier<T>` dùng chung cho lưới phim và lịch sử; dữ liệu cá nhân `watch(currentUserIdProvider)` → tự tải lại khi đổi tài khoản.
+- [x] Test: 16 test mới – interceptor (refresh, song song, bị từ chối, mất mạng, `auth:false`), đăng nhập/đăng xuất/đăng ký, khôi phục phiên, ♥ khách/đã đăng nhập, ghi lịch sử + Xem tiếp, tab Lịch sử.
 
-**DoD**
-- Đăng ký trên app → thả tim → đăng nhập cùng tài khoản trên máy ảo khác thấy phim đó.
-- Xem tập 3 → quay lại Detail thấy "Xem tiếp – Tập 3".
-- Tắt app, mở lại vẫn đăng nhập; sau khi access token hết hạn app vẫn hoạt động (đã refresh).
+**DoD** (27/10/2026)
+- ✅ Repository + interceptor Flutter chạy với backend + MySQL thật: đăng ký, 409, 401, yêu thích, lịch sử "Tập 5 • Vietsub #1", access token hỏng → tự refresh (token xoay vòng), sau logout → hết phiên, xoá token.
+- ✅ Widget test: xem tập 2 → quay lại Detail thấy "Xem tiếp Tập 2", trang chủ có hàng "Xem tiếp"; mở app có token → khôi phục phiên.
+- ✅ `flutter analyze` sạch, `flutter test` 53/53.
+- ⬜ Chạy trên 2 máy ảo cùng tài khoản để thấy đồng bộ yêu thích – cần chạy tay.
 
 ---
 

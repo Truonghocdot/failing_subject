@@ -12,6 +12,7 @@ public class VsmovMapperTests
 
         var dto = VsmovMapper.ToDetail(raw.Movie!, raw.Episodes);
 
+        Assert.Equal(54078, dto.SourceId);
         Assert.Equal("mua-he-dang-nho-2026", dto.Slug);
         Assert.Equal("Mùa Hè Đáng Nhớ", dto.Name);
         Assert.Equal("Summer Vacation", dto.OriginName);

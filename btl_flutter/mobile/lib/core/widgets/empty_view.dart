@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-/// Nội dung tạm cho màn hình chưa triển khai.
-class ComingSoonView extends StatelessWidget {
-  const ComingSoonView({super.key, required this.icon, required this.message});
+/// Trạng thái rỗng / nội dung tạm: icon + thông điệp.
+class EmptyView extends StatelessWidget {
+  const EmptyView({super.key, required this.icon, required this.message});
 
   final IconData icon;
   final String message;
@@ -21,9 +21,7 @@ class ComingSoonView extends StatelessWidget {
             Text(
               message,
               textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
+              style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
           ],
         ),

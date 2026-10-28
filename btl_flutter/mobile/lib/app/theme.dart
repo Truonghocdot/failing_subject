@@ -8,17 +8,9 @@ class AppTheme {
 
   static final dark = ThemeData(
     useMaterial3: true,
-    colorScheme: ColorScheme.fromSeed(
-      seedColor: _seed,
-      brightness: Brightness.dark,
-      surface: _background,
-    ),
+    colorScheme: ColorScheme.fromSeed(seedColor: _seed, brightness: Brightness.dark, surface: _background),
     scaffoldBackgroundColor: _background,
-    appBarTheme: const AppBarTheme(
-      backgroundColor: _background,
-      centerTitle: false,
-      scrolledUnderElevation: 0,
-    ),
+    appBarTheme: const AppBarTheme(backgroundColor: _background, centerTitle: false, scrolledUnderElevation: 0),
     navigationBarTheme: const NavigationBarThemeData(
       backgroundColor: Color(0xFF17171C),
       labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,

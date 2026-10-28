@@ -49,6 +49,7 @@ public static partial class VsmovMapper
         var slug = movie.Slug!.Trim();
         var (poster, thumb) = Images(movie.PosterUrl, movie.ThumbUrl, null);
         return new MovieDetailDto(
+            SourceId: movie.Id,
             Slug: slug,
             Name: CleanText(movie.Name) ?? slug,
             OriginName: CleanText(movie.OriginName),

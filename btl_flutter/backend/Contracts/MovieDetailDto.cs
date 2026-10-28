@@ -7,6 +7,7 @@ public sealed record EpisodeDto(string Name, string Slug, string EmbedUrl);
 public sealed record ServerDto(string Name, IReadOnlyList<EpisodeDto> Episodes);
 
 public sealed record MovieDetailDto(
+    int? SourceId,          // _id của vsmov
     string Slug,
     string Name,
     string? OriginName,

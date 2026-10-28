@@ -43,7 +43,7 @@ Lần đầu: nếu chưa có `.env` thì copy từ `.env.example` ở cả `bac
 # 1. Backend (terminal 1)
 cd backend
 dotnet tool restore
-dotnet ef database update      # từ Phase 5 (khi đã có migration)
+dotnet ef database update      # tạo bảng (Development cũng tự migrate khi dotnet run)
 dotnet run                     # http://localhost:5080 – kiểm tra: curl localhost:5080/health
 
 # 2. Mobile (terminal 2) – Android emulator truy cập máy host qua 10.0.2.2

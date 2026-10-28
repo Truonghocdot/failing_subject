@@ -5,7 +5,7 @@ using backend.Vsmov;
 
 namespace backend.Tests;
 
-internal static class Samples
+public static class Samples
 {
     public static string Read(string fileName) =>
         File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Samples", fileName));
@@ -15,7 +15,7 @@ internal static class Samples
 }
 
 /// <summary>Giả lập vsmov: map "path?query" → response; đếm số request để kiểm tra cache.</summary>
-internal sealed class FakeVsmovHandler : HttpMessageHandler
+public sealed class FakeVsmovHandler : HttpMessageHandler
 {
     private readonly Dictionary<string, Func<HttpResponseMessage>> _routes = [];
 
