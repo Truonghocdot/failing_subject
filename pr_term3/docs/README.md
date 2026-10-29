@@ -30,6 +30,7 @@
 | 5 | [05-ke-hoach-phase.md](05-ke-hoach-phase.md) | **Kế hoạch triển khai theo phase** + checklist + DoD |
 | 6 | [06-database.md](06-database.md) | Database: ERD, bảng, index, chống đặt trùng, `.env` |
 | 7 | [07-van-hanh.md](07-van-hanh.md) | **Vận hành**: publish, `.env` production, chạy `backend.exe`, Windows Service, cập nhật, bảo mật, sự cố |
+| 8 | [08-huong-dan-su-dung.md](08-huong-dan-su-dung.md) | **Hướng dẫn sử dụng** cho khách, lễ tân, quản trị: hệ thống có những tính năng gì, dùng thế nào |
 
 ## Phạm vi & giả định (đã chọn mặc định – sửa ở đây nếu khác)
 
