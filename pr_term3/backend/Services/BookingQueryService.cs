@@ -12,7 +12,7 @@ public sealed record BookingFilter(
 /// <summary>
 /// Đọc đặt phòng cho khách (chỉ của mình, ẩn ghi chú nội bộ / người ghi) và cho nhân viên (đủ khoản thu, nhật ký).
 /// </summary>
-public sealed class BookingQueryService(AppDbContext db, IOptions<PaymentOptions> paymentOptions)
+public sealed class BookingQueryService(AppDbContext db, IOptions<PaymentOptions> paymentOptions, AppClock clock)
 {
     public const int PageSize = 20;
 
@@ -108,6 +108,10 @@ public sealed class BookingQueryService(AppDbContext db, IOptions<PaymentOptions
                 staffView ? p.Note : null, staffView ? names.GetValueOrDefault(p.RecordedById) : null))
             .ToList();
 
+        var review = await db.Reviews.AsNoTracking().Where(r => r.BookingId == b.Id)
+            .Select(r => new ReviewDto(r.Id, r.Rating, r.Comment, r.CreatedAt)).SingleOrDefaultAsync(ct);
+        var canReview = !staffView && b.UserId is not null && ReviewService.CannotReview(b, review is not null, clock.UtcNow) is null;
+
         var h = b.Homestay;
         return new BookingDto(b.Id, b.Code, h.Id, h.Name, h.Slug, h.Address, b.RoomId, b.Room.Name, b.UserId,
             b.GuestName, b.GuestPhone, b.GuestEmail, b.Guests, b.Nights, b.CheckIn, b.CheckOut,
@@ -116,6 +120,6 @@ public sealed class BookingQueryService(AppDbContext db, IOptions<PaymentOptions
             b.RoomTotal, b.ExtraGuestTotal, b.CleaningFee, b.Total, b.DepositAmount, b.RefundAmount, money, b.Status, b.Source,
             b.GuestNote, staffView ? b.InternalNote : null, b.CancelReason, b.HoldUntil,
             b.ConfirmedAt, b.CheckedInAt, b.CheckedOutAt, b.CancelledAt,
-            AvailabilityService.Policy(h), transfer, paymentRows, events, b.CreatedAt, b.UpdatedAt);
+            AvailabilityService.Policy(h), transfer, paymentRows, events, b.CreatedAt, b.UpdatedAt, review, canReview);
     }
 }

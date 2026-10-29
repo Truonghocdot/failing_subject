@@ -15,7 +15,7 @@ public sealed record GuestInput(string Name, string Phone, string? Email, string
 /// Tạo đặt phòng + vòng đời (docs/02-nghiep-vu.md §6–7). Mọi thay đổi chạy trong transaction:
 /// khoá dòng booking trước, khoá / nhả room_nights cùng transaction, ghi booking_events.
 /// </summary>
-public sealed class BookingService(AppDbContext db, AppClock clock, PricingService pricing, PaymentService payments)
+public sealed class BookingService(AppDbContext db, AppClock clock, PricingService pricing, PaymentService payments, EmailService emails)
 {
     public const string NotFound = "Không tìm thấy đặt phòng";
 
@@ -101,8 +101,10 @@ public sealed class BookingService(AppDbContext db, AppClock clock, PricingServi
             db.Log(booking, "payment", $"{PaymentService.KindLabel(payment.Kind)} {Vnd.Format(payment.Amount)} " +
                                        $"({PaymentService.MethodLabel(payment.Method)}) khi tạo đặt phòng", actor.Id);
             payments.AutoConfirm(booking, actor.Id, now);
-            await db.SaveChangesAsync(ct);
         }
+        // Chờ cọc → thư kèm hướng dẫn chuyển khoản; đã đủ cọc / không cần cọc → thư xác nhận
+        emails.Queue(booking, room.Homestay, room, booking.Status == BookingStatus.Confirmed ? EmailKind.Confirmed : EmailKind.Created);
+        await db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
         return booking.Id;
     }
@@ -152,6 +154,7 @@ public sealed class BookingService(AppDbContext db, AppClock clock, PricingServi
         b.CancelledAt = clock.UtcNow;
         b.HoldUntil = null;
         db.Transition(b, BookingStatus.Cancelled, actor.Id, BookingLocks.Truncate(message));
+        emails.Queue(b, b.Homestay, b.Room, EmailKind.Cancelled);
         await db.ReleaseNightsAsync(b.Id, ct);
         await db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
@@ -174,6 +177,7 @@ public sealed class BookingService(AppDbContext db, AppClock clock, PricingServi
         b.ConfirmedAt = clock.UtcNow;
         b.HoldUntil = null;
         db.Transition(b, BookingStatus.Confirmed, actor.Id, reason is null ? "Xác nhận" : $"Xác nhận: {reason}");
+        emails.Queue(b, b.Homestay, b.Room, EmailKind.Confirmed);
         await db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
     }
@@ -206,7 +210,7 @@ public sealed class BookingService(AppDbContext db, AppClock clock, PricingServi
 
         var today = clock.Today;
         var message = "Trả phòng";
-        if (today < b.CheckOut) message += $" sớm – nhả {b.CheckOut.DayNumber - Max(today, b.CheckIn.AddDays(1)).DayNumber} đêm còn lại";
+        if (today < b.CheckOut) message += $" sớm – nhả {b.CheckOut.DayNumber - Max(today, b.CheckIn).DayNumber} đêm còn lại"; // mọi đêm từ hôm nay đều trống lại (kể cả trả ngay trong ngày nhận phòng)
         if (due > 0) message += $"; còn thiếu {Vnd.Format(due)}: {reason}";
 
         b.CheckedOutAt = clock.UtcNow;

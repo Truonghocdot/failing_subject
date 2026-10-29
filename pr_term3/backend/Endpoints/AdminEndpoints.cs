@@ -19,6 +19,15 @@ public static class AdminEndpoints
         admin.MapAdminCatalog();
         admin.MapAdminBookings();
 
+        admin.MapGet("/guests", ListGuests).WithTags("Quản trị – khách").WithName("ListGuests")
+            .WithSummary("Khách gộp theo SĐT (q: tên / SĐT / email, page) – lịch sử: /api/admin/bookings?q=<SĐT>");
+
+        var reports = admin.MapGroup("").WithTags("Quản trị – báo cáo & đánh giá").RequireAuthorization(Roles.AdminPolicy);
+        reports.MapGet("/reports", Report).WithName("Report")
+            .WithSummary($"Công suất, ADR, RevPAR, doanh thu theo tháng / homestay / nguồn, tỉ lệ huỷ (from, to ≤ {ReportService.MaxDays} ngày, homestayId)");
+        reports.MapGet("/reviews", ListReviews).WithName("AdminListReviews").WithSummary("Mọi đánh giá (homestayId, hidden=true|false, page)");
+        reports.MapPut("/reviews/{id:long}", SetReviewVisibility).WithName("SetReviewVisibility").WithSummary("Ẩn / hiện đánh giá {isHidden}");
+
         var users = admin.MapGroup("/users").WithTags("Quản trị – nhân viên").RequireAuthorization(Roles.AdminPolicy);
         users.MapGet("", ListStaff).WithName("ListStaff").WithSummary("Danh sách lễ tân / quản trị (q: email, tên, SĐT)");
         users.MapPost("", CreateStaff).WithName("CreateStaff").WithSummary("Tạo tài khoản nhân viên");
@@ -30,6 +39,42 @@ public static class AdminEndpoints
     }
 
     private static readonly UserRole[] StaffRoles = [UserRole.Staff, UserRole.Admin];
+
+    private static async Task<Results<Ok<PagedResult<GuestDto>>, ValidationProblem>> ListGuests(
+        string? q, int? page, GuestService guests, CancellationToken ct)
+    {
+        var v = new RequestValidator()
+            .OptionalText("q", q, 100, out var term, "Từ khoá")
+            .Int("page", page, 1, 10_000, 1, out var pageNumber, "Trang");
+        if (!v.IsValid) return v.Problem();
+        return TypedResults.Ok(await guests.ListAsync(term, pageNumber, ct));
+    }
+
+    private static async Task<Results<Ok<ReportDto>, ValidationProblem>> Report(
+        DateOnly? from, DateOnly? to, long? homestayId, AppClock clock, ReportService reports, CancellationToken ct)
+    {
+        var today = clock.Today;
+        var start = from ?? new DateOnly(today.Year, today.Month, 1);
+        var v = new RequestValidator().DateRange(start, to ?? start.AddMonths(1).AddDays(-1), ReportService.MaxDays, out var f, out var t);
+        if (!v.IsValid) return v.Problem();
+        return TypedResults.Ok(await reports.BuildAsync(f, t, homestayId, ct));
+    }
+
+    private static async Task<Results<Ok<PagedResult<AdminReviewDto>>, ValidationProblem>> ListReviews(
+        long? homestayId, bool? hidden, int? page, ReviewService reviews, CancellationToken ct)
+    {
+        var v = new RequestValidator().Int("page", page, 1, 10_000, 1, out var pageNumber, "Trang");
+        if (!v.IsValid) return v.Problem();
+        return TypedResults.Ok(await reviews.ListAdminAsync(homestayId, hidden, pageNumber, ct));
+    }
+
+    private static async Task<Results<NoContent, ValidationProblem>> SetReviewVisibility(
+        long id, ReviewVisibilityRequest body, ReviewService reviews, CancellationToken ct)
+    {
+        if (body.IsHidden is null) return new RequestValidator().Add("isHidden", "Vui lòng chọn ẩn hay hiện").Problem();
+        await reviews.SetHiddenAsync(id, body.IsHidden.Value, ct);
+        return TypedResults.NoContent();
+    }
 
     private static async Task<Ok<List<StaffDto>>> ListStaff(string? q, StaffService staff, CancellationToken ct) =>
         TypedResults.Ok(await staff.ListAsync(q, ct));

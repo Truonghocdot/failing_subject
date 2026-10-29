@@ -11,7 +11,7 @@ React 19 + Vite 8 + TypeScript, Tailwind CSS 4. Một SPA, hai khu dùng chung c
 | `react-hook-form`, `zod`, `@hookform/resolvers` | Form + kiểm tra dữ liệu (lỗi server gắn vào từng ô) |
 | `dayjs` (locale `vi`) | Ngày, lịch |
 | `lucide-react` | Icon |
-| `recharts` | (Phase 6) biểu đồ báo cáo |
+| _(không dùng thư viện biểu đồ)_ | Báo cáo dùng `components/ColumnChart` (SVG tự viết, tooltip hover / focus) – nhẹ hơn `recharts`, đủ cho cột theo tháng |
 | Dev: `vitest`, `@testing-library/*`, `jsdom`, `oxlint`, `@tailwindcss/vite` | Test, lint, CSS |
 
 ## 2. Trang
@@ -22,10 +22,10 @@ React 19 + Vite 8 + TypeScript, Tailwind CSS 4. Một SPA, hai khu dùng chung c
 |---|---|---|
 | `/` | Trang chủ | Ô tìm kiếm lớn (nơi đến, nhận – trả phòng, số khách), homestay nổi bật, tỉnh phổ biến |
 | `/stays?province&checkIn&checkOut&guests…` | Kết quả tìm kiếm | Bộ lọc (tiện nghi, giá tối đa, sắp xếp) trên URL, thẻ homestay: ảnh, điểm, "giá từ / đêm" |
-| `/stays/:slug` | Chi tiết homestay | Thư viện ảnh, mô tả, tiện nghi, chính sách nhận – trả – huỷ, danh sách phòng + lịch còn trống, đánh giá, **khung đặt phòng** dính bên phải (báo giá từng đêm) |
-| `/book/:roomId?checkIn&checkOut&guests` | Đặt phòng | Thông tin khách, ghi chú, tóm tắt giá, đồng ý chính sách → tạo đặt phòng |
-| `/bookings/:code` | Đặt phòng của tôi (chi tiết) | Trạng thái, **hướng dẫn chuyển khoản** + đồng hồ hạn giữ chỗ, huỷ (xem trước số hoàn), đánh giá |
-| `/bookings` | Danh sách đặt phòng của tôi | Tab: Sắp tới · Đã ở · Đã huỷ |
+| `/stays/:slug?room&checkIn&checkOut&guests` | Chi tiết homestay | Thư viện ảnh, mô tả, tiện nghi, chính sách nhận – trả – huỷ, danh sách phòng + lịch tháng còn trống (bấm 2 lần chọn ngày), đánh giá, **khung đặt phòng** dính bên phải (điện thoại: thanh tổng tiền dính đáy) |
+| `/book/:roomId?stay&checkIn&checkOut&guests` | Đặt phòng 🔒 | Thông tin khách (điền sẵn từ tài khoản), ghi chú, tóm tắt giá, đồng ý chính sách → tạo đặt phòng; `stay` = slug để hiện tên / chính sách |
+| `/bookings/:code` | Đặt phòng của tôi (chi tiết) 🔒 | Trạng thái, **hướng dẫn chuyển khoản** + đồng hồ hạn giữ chỗ, huỷ (xem trước số hoàn), đánh giá (Phase 6) |
+| `/bookings?tab=upcoming\|stayed\|cancelled` | Danh sách đặt phòng của tôi 🔒 | Tab: Sắp tới · Đã ở · Đã huỷ |
 | `/lookup` | Tra cứu | Mã đặt phòng + số điện thoại |
 | `/login`, `/register`, `/account` | Tài khoản | |
 
@@ -34,7 +34,8 @@ React 19 + Vite 8 + TypeScript, Tailwind CSS 4. Một SPA, hai khu dùng chung c
 | Route | Trang | Nội dung |
 |---|---|---|
 | `/admin` | Hôm nay | Khách đến / đi / đang ở, pending sắp hết hạn giữ chỗ, công suất 7 ngày |
-| `/admin/calendar` | **Lịch phòng** | Lưới phòng × ngày (14 / 30 ngày), thanh đặt phòng màu theo trạng thái; bấm ô trống → tạo đặt phòng / khoá phòng, bấm thanh → chi tiết |
+| `/admin/calendar?homestayId&from&days` | **Lịch phòng** | Lưới phòng × ngày (14 / 30 ngày), thanh đặt phòng màu theo trạng thái; bấm ô trống → tạo đặt phòng / khoá phòng, bấm thanh → chi tiết |
+| `/admin/bookings/new?homestayId&roomId&checkIn&checkOut` | Tạo đặt phòng hộ | Báo giá sống, thu cọc / thanh toán đủ ngay (đủ cọc → xác nhận) |
 | `/admin/bookings` | Đặt phòng | Lọc trạng thái, homestay, khoảng ngày, nguồn, tìm mã / tên / SĐT |
 | `/admin/bookings/:id` | Chi tiết | Nút hành động theo trạng thái, khoản thu – hoàn, còn phải thu, đổi ngày / phòng, nhật ký |
 | `/admin/homestays`, `/admin/homestays/:id` | Homestay 🔑 | Thông tin, ảnh (kéo thả sắp xếp), chính sách, phòng |
@@ -52,10 +53,11 @@ Khách đã đăng nhập vào `/admin` → trang "Không có quyền"; nhân vi
 fe/src/
 ├── app/            # App, routes, layout PublicLayout / AdminLayout, guards (RequireAuth, RequireRole), NotFound
 ├── components/     # Button, Field, Dialog, DateRangePicker, GuestPicker, Money, StatusBadge, Pagination, ImageGallery…
-├── lib/            # api.ts (fetch + refresh single-flight), format.ts (tiền, ngày, đêm), types.ts, forms.ts
+├── lib/            # api.ts (fetch + refresh single-flight), format.ts (tiền, ngày, đêm, nhãn), types.ts, forms.ts (SĐT / email như backend)
+├── test/           # render.tsx (mockApi theo "METHOD /path", reply có thể là hàm), fixtures.ts
 └── features/
-    ├── auth/  stays/  booking/  my-bookings/            # khu khách
-    └── admin/ dashboard/ calendar/ bookings/ homestays/ rates/ guests/ reviews/ reports/ users/
+    ├── auth/  home/  stays/  booking/                   # khu khách (booking/ gồm cả đặt phòng của tôi + tra cứu)
+    └── admin/                                           # khu quản trị: api.ts (hook + invalidateBookings / invalidateCatalog), shared.tsx, 1 file / trang
 ```
 
 Mỗi feature có `api.ts` chứa query key + hook; component chỉ gọi hook.

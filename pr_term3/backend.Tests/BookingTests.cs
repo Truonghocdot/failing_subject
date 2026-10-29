@@ -207,6 +207,8 @@ public class BookingTests(ApiFactory factory) : IClassFixture<ApiFactory>
         var done = await PostOkAsync(staff, $"/api/admin/bookings/{booking.Id}/check-out");
         Assert.Equal((BookingStatus.CheckedOut, PaymentStatus.Paid, 0m), (done.Status, done.Money.Status, done.Money.AmountDue));
         Assert.Equal(0, await factory.WithDbAsync(db => db.RoomNights.CountAsync(n => n.BookingId == booking.Id)));
+        // trả ngay trong ngày nhận phòng: cả 2 đêm (kể cả đêm nay) đã nhả – đặt lại được ngay
+        Assert.Contains(done.Events, e => e.Message == "Trả phòng sớm – nhả 2 đêm còn lại");
         var afterCheckOut = await staff.Client.GetJsonAsync<DashboardDto>("/api/admin/dashboard");
         Assert.Contains(afterCheckOut!.Departures, d => d.Id == booking.Id); // trả sớm trong ngày vẫn hiện ở "khách đi hôm nay"
         Assert.Equal(["created", "payment", "status", "status", "payment", "status"], done.Events.Select(e => e.Type));
@@ -335,6 +337,38 @@ public class BookingTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Empty(afterDelete.Payments);
         Assert.Contains(afterDelete.Events, e => e.Type == "payment_deleted");
         Assert.Equal(BookingStatus.Confirmed, afterDelete.Status); // xoá khoản thu không tự lùi trạng thái – ghi nhật ký để lễ tân xử lý
+    }
+
+    [Fact]
+    public async Task Guests_GroupedByPhone_CountsStaysAndPaid_SearchByNameOrPhone_StaffOnly()
+    {
+        var admin = await factory.LoginSeedAdminAsync();
+        var staff = await factory.CreateStaffAsync();
+        var stay = await admin.CreateStayAsync();
+        var phone = $"09{Random.Shared.Next(10_000_000, 99_999_999)}";
+        var name = $"Khách Gộp {Guid.NewGuid():N}"[..20];
+        object Walk(int day, string guestName) => new
+        {
+            roomId = stay.RoomId, checkIn = factory.Today.AddDays(day), checkOut = factory.Today.AddDays(day + 1), guests = 1,
+            guestName, guestPhone = phone, guestEmail = "gop@example.com",
+        };
+        var first = await TestCatalog.PostAsync<BookingDto>(staff, "/api/admin/bookings", Walk(70, "Tên Cũ"));
+        await PostOkAsync(staff, $"/api/admin/bookings/{first.Id}/payments", new { kind = "deposit", method = "cash", amount = 500_000 });
+        await PostOkAsync(staff, $"/api/admin/bookings/{first.Id}/payments", new { kind = "refund", method = "cash", amount = 100_000 });
+        var second = await TestCatalog.PostAsync<BookingDto>(staff, "/api/admin/bookings", Walk(80, name));
+        await PostOkAsync(staff, $"/api/admin/bookings/{second.Id}/cancel", new { reason = "Đổi ý" });
+
+        var byPhone = await staff.Client.GetJsonAsync<PagedResult<GuestDto>>($"/api/admin/guests?q={phone[..4]} {phone[4..]}");
+        var guest = Assert.Single(byPhone!.Items, g => g.Phone == phone);
+        // tên theo lần đặt gần nhất; 2 lần đặt: 1 sắp tới, 1 đã huỷ; đã trả 500k − hoàn 100k
+        Assert.Equal((name, "gop@example.com", false, 2, 0, 1, 1, 400_000m, factory.Today.AddDays(80)),
+            (guest.Name, guest.Email, guest.HasAccount, guest.Bookings, guest.Stays, guest.Upcoming, guest.Cancelled, guest.Paid, guest.LastCheckIn));
+
+        var byName = await staff.Client.GetJsonAsync<PagedResult<GuestDto>>($"/api/admin/guests?q={Uri.EscapeDataString("Tên Cũ")}");
+        Assert.Contains(byName!.Items, g => g.Phone == phone);
+
+        var asGuest = await (await factory.CreateGuestAsync()).Client.GetAsync("/api/admin/guests");
+        Assert.Equal(HttpStatusCode.Forbidden, asGuest.StatusCode);
     }
 
     private static async Task<BookingDto> PostOkAsync(TestUser user, string url, object? body = null)

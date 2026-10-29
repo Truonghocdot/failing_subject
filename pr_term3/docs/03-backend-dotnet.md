@@ -40,7 +40,7 @@ backend/
 ├── Hosting/                   # EnvFile, Uploads (phục vụ /uploads), (Phase 7) WebHosting, FileLogger
 ├── Services/                  # AuthService, StaffService, CatalogService, PricingService, AvailabilityService, BookingService,
 │                              # BookingQueryService, BookingLocks, PaymentService, CalendarService (lịch, khoá phòng, dashboard),
-│                              # (Phase 6) ReviewService, ReportService, EmailService
+│                              # ReviewService, ReportService, EmailService (outbox), MailSender (SMTP / .eml)
 └── Workers/                   # HoldExpiryWorker, EmailOutboxWorker (BackgroundService + PeriodicTimer)
 ```
 
@@ -66,14 +66,14 @@ backend/
 | GET | `/api/stays?province&q&checkIn&checkOut&guests&amenities&priceMax&sort&page` | 🔓 kết quả tìm kiếm ([02 §5](02-nghiep-vu.md#5-tìm-kiếm--tình-trạng-phòng)) |
 | GET | `/api/stays/{slug}` | 🔓 chi tiết: ảnh, tiện nghi, chính sách, phòng, điểm đánh giá |
 | GET | `/api/stays/{slug}/calendar?from&to` | 🔓 mỗi phòng × ngày: `available`, `price` (≤ 62 ngày) |
-| GET | `/api/stays/{slug}/reviews?page` | 🔓 đánh giá đang hiện |
+| GET | `/api/stays/{slug}/reviews?page` | 🔓 đánh giá đang hiện (10 / trang, tên rút gọn "Minh T.") |
 | POST | `/api/quotes` | 🔓 `{roomId, checkIn, checkOut, guests}` → giá từng đêm, tổng, cọc, `available` |
 | POST | `/api/bookings` | 👤 `{roomId, checkIn, checkOut, guests, guestName, guestPhone, guestEmail?, note?, expectedTotal}` → `201 BookingDto` |
 | GET | `/api/bookings?status` | 👤 đặt phòng của tôi |
 | GET | `/api/bookings/{code}` | 👤 chi tiết + hướng dẫn chuyển khoản + nhật ký trạng thái |
 | GET | `/api/bookings/{code}/cancel-preview` | 👤 số tiền được hoàn nếu huỷ bây giờ |
 | POST | `/api/bookings/{code}/cancel` | 👤 `{reason?}` |
-| POST | `/api/bookings/{code}/review` | 👤 `{rating, comment}` |
+| POST | `/api/bookings/{code}/review` | 👤 `{rating 1–5, comment ≤ 1000}` – đã trả phòng ≤ 30 ngày, 1 lần (`409`); `BookingDto.review` / `canReview` |
 | POST | `/api/bookings/lookup` | 🔓 `{code, phone}` → chi tiết rút gọn (rate limit 10/phút/IP) |
 
 ### 3.3 Khu quản trị (`/api/admin`)
@@ -100,9 +100,9 @@ backend/
 | GET / POST | `/users?q` | 🔑 danh sách lễ tân / quản trị · tạo `{email, password, fullName, phone?, role: staff\|admin}` |
 | PUT | `/users/{id}` | 🔑 `{fullName, phone?, role, isActive}` – không tự hạ quyền / khoá mình (`409`), luôn còn ≥ 1 admin |
 | POST | `/users/{id}/reset-password` | 🔑 `{password}` → `204`, đăng xuất mọi thiết bị của nhân viên đó |
-| GET | `/guests?q` | 🛎 khách (từ tài khoản + đặt phòng hộ), lịch sử lưu trú |
-| PUT | `/reviews/{id}` | 🔑 ẩn / hiện đánh giá |
-| GET | `/reports/summary` · `/occupancy` · `/revenue` · `/sources` | 🔑 [02 §11](02-nghiep-vu.md#11-báo-cáo-quản-trị); xuất CSV |
+| GET | `/guests?q&page` | 🛎 khách gộp theo SĐT (tự đặt + đặt hộ): số lần đặt / ở / sắp tới / huỷ, đã trả, lần nhận phòng gần nhất; lịch sử = `/bookings?q=<SĐT>` |
+| GET · PUT | `/reviews?homestayId&hidden&page` · `/reviews/{id}` | 🔑 mọi đánh giá · ẩn / hiện `{isHidden}` |
+| GET | `/reports?from&to&homestayId` | 🔑 [02 §11](02-nghiep-vu.md#11-báo-cáo-quản-trị) – tổng + `months` / `homestays` / `sources` trong 1 lần gọi (≤ 366 ngày); CSV xuất ở FE |
 
 ## 4. Lỗi (ProblemDetails)
 
@@ -130,7 +130,8 @@ backend/
 | `Payment__BankName` / `__AccountNumber` / `__AccountName` | – (Development: tài khoản demo trong `appsettings.Development.json`) | Hiện trong hướng dẫn chuyển khoản (nội dung CK = mã đặt phòng); trống → không hiện |
 | `Uploads__Path` | `storage/uploads` | Ảnh homestay (tương đối theo thư mục backend) |
 | `Workers__HoldExpiry` | `true` | Dịch vụ nền hết hạn giữ chỗ mỗi phút (test tắt, gọi `ExpireDueAsync` trực tiếp) |
-| `Smtp__Host` / `__Port` / `__User` / `__Password` / `__From` | trống → ghi `.eml` vào `storage/mail` | Phase 6 |
+| `Smtp__Host` / `__Port` / `__User` / `__Password` / `__From` | trống → ghi `.eml` vào `Smtp__PickupPath` (`storage/mail`) | MailKit, cổng 465 SSL / 587 STARTTLS |
+| `Workers__EmailOutbox` | `true` | Mỗi 30 giây: xếp thư nhắc ngày mai + gửi outbox (lỗi thử lại 5 lần); test tắt |
 | `RateLimit__AuthPermitPerMinute` | `10` | Đăng ký / đăng nhập / tra cứu |
 
 ## 6. Ghi chú triển khai

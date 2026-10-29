@@ -1,6 +1,7 @@
-import { Menu, X } from 'lucide-react'
+import { CircleUserRound, Menu, X } from 'lucide-react'
 import { useState } from 'react'
 import { Link, NavLink, Outlet } from 'react-router'
+import { useAuth } from '../../features/auth/useAuth'
 import { env } from '../env'
 import { HealthBadge } from './HealthBadge'
 import { publicNav } from './nav'
@@ -16,6 +17,8 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
 /** Khu khách: thanh trên cùng (điện thoại: nút menu), nội dung, chân trang. */
 export function PublicLayout() {
   const [open, setOpen] = useState(false)
+  const auth = useAuth()
+  const user = auth.status === 'authenticated' ? auth.user : null
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur dark:border-slate-800 dark:bg-slate-900/90">
@@ -30,9 +33,16 @@ export function PublicLayout() {
                 {item.label}
               </NavLink>
             ))}
-            <Link to="/login" className="ml-2 rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800">
-              Đăng nhập
-            </Link>
+            {user ? (
+              <NavLink to="/account" className={(a) => `${linkClass(a)} ml-2 flex max-w-48 items-center gap-2`}>
+                <CircleUserRound className="size-5 shrink-0" aria-hidden />
+                <span className="truncate">{user.fullName}</span>
+              </NavLink>
+            ) : (
+              <Link to="/login" className="ml-2 rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800">
+                Đăng nhập
+              </Link>
+            )}
           </nav>
           <button
             type="button"
@@ -51,9 +61,27 @@ export function PublicLayout() {
                 {item.label}
               </NavLink>
             ))}
-            <NavLink to="/login" className={linkClass} onClick={() => setOpen(false)}>
-              Đăng nhập
-            </NavLink>
+            {user ? (
+              <>
+                <NavLink to="/account" className={linkClass} onClick={() => setOpen(false)}>
+                  Tài khoản ({user.fullName})
+                </NavLink>
+                <button
+                  type="button"
+                  className={`${linkClass({ isActive: false })} text-left`}
+                  onClick={() => {
+                    setOpen(false)
+                    void auth.logout()
+                  }}
+                >
+                  Đăng xuất
+                </button>
+              </>
+            ) : (
+              <NavLink to="/login" className={linkClass} onClick={() => setOpen(false)}>
+                Đăng nhập
+              </NavLink>
+            )}
           </nav>
         )}
       </header>

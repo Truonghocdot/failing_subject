@@ -1,6 +1,7 @@
-import { ExternalLink, Menu, X } from 'lucide-react'
+import { ExternalLink, LogOut, Menu, X } from 'lucide-react'
 import { useState } from 'react'
-import { Link, NavLink, Outlet } from 'react-router'
+import { Link, NavLink, Outlet, useNavigate } from 'react-router'
+import { useAuth, useUser } from '../../features/auth/useAuth'
 import { env } from '../env'
 import { HealthBadge } from './HealthBadge'
 import { adminNav } from './nav'
@@ -12,7 +13,14 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
       : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
   }`
 
+const roleLabels = { guest: 'Khách', staff: 'Lễ tân', admin: 'Quản trị' } as const
+
 function SideNav({ onNavigate }: { onNavigate?: () => void }) {
+  const user = useUser()
+  const { logout } = useAuth()
+  const navigate = useNavigate()
+  // Lễ tân không thấy mục chỉ admin (backend vẫn chặn 403 nếu gõ thẳng URL / gọi API)
+  const items = adminNav.filter((item) => !item.adminOnly || user.role === 'admin')
   return (
     <>
       <div className="mb-6 flex items-center gap-2 px-2">
@@ -23,7 +31,7 @@ function SideNav({ onNavigate }: { onNavigate?: () => void }) {
         </div>
       </div>
       <nav aria-label="Điều hướng quản trị" className="flex flex-1 flex-col gap-1">
-        {adminNav.map(({ to, label, icon: Icon }) => (
+        {items.map(({ to, label, icon: Icon }) => (
           <NavLink key={to} to={to} end={to === '/admin'} className={linkClass} onClick={onNavigate}>
             <Icon className="size-5" aria-hidden />
             {label}
@@ -31,6 +39,24 @@ function SideNav({ onNavigate }: { onNavigate?: () => void }) {
         ))}
       </nav>
       <div className="flex flex-col gap-3 border-t border-slate-200 px-2 pt-3 dark:border-slate-800">
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0 text-sm leading-tight">
+            <p className="truncate font-medium">{user.fullName}</p>
+            <p className="text-xs text-slate-600 dark:text-slate-400">{roleLabels[user.role]}</p>
+          </div>
+          <button
+            type="button"
+            aria-label="Đăng xuất"
+            title="Đăng xuất"
+            className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+            onClick={async () => {
+              await logout()
+              navigate('/login')
+            }}
+          >
+            <LogOut className="size-4" aria-hidden />
+          </button>
+        </div>
         <Link to="/" className="flex items-center gap-2 text-sm text-slate-600 hover:underline dark:text-slate-300">
           <ExternalLink className="size-4" aria-hidden />
           Xem trang khách
@@ -41,7 +67,7 @@ function SideNav({ onNavigate }: { onNavigate?: () => void }) {
   )
 }
 
-/** Khu quản trị: sidebar trái (máy tính), ngăn kéo menu (điện thoại). Phase 5 thêm kiểm tra vai trò. */
+/** Khu quản trị: sidebar trái (máy tính), ngăn kéo menu (điện thoại). Nằm trong <RequireRole roles={['staff','admin']} />. */
 export function AdminLayout() {
   const [open, setOpen] = useState(false)
   return (

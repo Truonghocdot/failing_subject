@@ -35,6 +35,7 @@ builder.Services.AddOptions<AppOptions>()
 builder.Services.Configure<SeedOptions>(builder.Configuration.GetSection(SeedOptions.Section));
 builder.Services.Configure<UploadOptions>(builder.Configuration.GetSection(UploadOptions.Section));
 builder.Services.Configure<PaymentOptions>(builder.Configuration.GetSection(PaymentOptions.Section));
+builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection(SmtpOptions.Section));
 
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<AppClock>();
@@ -51,8 +52,17 @@ builder.Services.AddScoped<BookingService>();
 builder.Services.AddScoped<BookingQueryService>();
 builder.Services.AddScoped<PaymentService>();
 builder.Services.AddScoped<CalendarService>();
+builder.Services.AddScoped<GuestService>();
+builder.Services.AddScoped<ReviewService>();
+builder.Services.AddScoped<ReportService>();
+builder.Services.AddScoped<EmailService>();
+builder.Services.AddScoped<EmailOutboxSender>();
+// Chưa cấu hình Smtp__Host → ghi .eml vào storage/mail thay vì gửi thật
+if (!string.IsNullOrWhiteSpace(builder.Configuration["Smtp:Host"])) builder.Services.AddSingleton<IMailSender, SmtpMailSender>();
+else builder.Services.AddSingleton<IMailSender, PickupFolderMailSender>();
 // Hết hạn giữ chỗ mỗi phút; test tắt (Workers:HoldExpiry=false) và gọi BookingService.ExpireDueAsync trực tiếp
 if (builder.Configuration.GetValue("Workers:HoldExpiry", true)) builder.Services.AddHostedService<HoldExpiryWorker>();
+if (builder.Configuration.GetValue("Workers:EmailOutbox", true)) builder.Services.AddHostedService<EmailOutboxWorker>();
 
 // Enum trả JSON dạng snake_case giống trong DB: "guest", "checked_in", "bank_transfer"...
 builder.Services.ConfigureHttpJsonOptions(o =>

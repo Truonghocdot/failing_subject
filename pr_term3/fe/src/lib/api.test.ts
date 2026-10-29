@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { api, ApiError } from './api'
-import { mockApi } from '../test/render'
+import { calls, mockApi } from '../test/render'
+import { session } from '../test/fixtures'
+import { api, ApiError, refreshSession, setAccessToken } from './api'
 
 describe('api', () => {
   it('trả JSON khi thành công', async () => {
@@ -21,8 +22,34 @@ describe('api', () => {
     expect((error as ApiError).errors.checkOut).toHaveLength(1)
   })
 
+  it('giữ phần mở rộng của ProblemDetails (VD báo giá mới khi giá đổi)', async () => {
+    mockApi({ 'POST /api/bookings': [409, { type: 'x', status: 409, title: 'Xung đột', detail: 'Giá đã thay đổi', traceId: 't', quote: { total: 2 } }] })
+    const error = (await api('/bookings', { method: 'POST', body: {} }).catch((e: unknown) => e)) as ApiError
+    expect(error.extensions).toEqual({ quote: { total: 2 } })
+  })
+
   it('lỗi 5xx không lộ chi tiết máy chủ', async () => {
     mockApi({ 'GET /api/c': [500, { title: 'boom', detail: 'stack trace' }] })
     await expect(api('/c')).rejects.toMatchObject({ status: 500, message: 'Máy chủ trả lỗi 500' })
+  })
+
+  it('401 → refresh đúng 1 lần cho nhiều request song song rồi gửi lại với token mới', async () => {
+    setAccessToken('cu')
+    const fetchMock = mockApi({
+      'POST /api/auth/refresh': [200, session],
+      'GET /api/bookings': (req) => (req.headers.Authorization === `Bearer ${session.accessToken}` ? [200, []] : [401, { title: 'Hết phiên' }]),
+    })
+
+    await expect(Promise.all([api('/bookings'), api('/bookings'), api('/bookings')])).resolves.toEqual([[], [], []])
+    expect(calls(fetchMock, 'POST /api/auth/refresh')).toHaveLength(1)
+  })
+
+  it('refresh thất bại → ném 401, không lặp vô hạn; login không thử refresh', async () => {
+    const fetchMock = mockApi({ 'POST /api/auth/refresh': [401, { title: 'Hết phiên' }], 'GET /api/me': [401, {}], 'POST /api/auth/login': [401, { title: 'Sai', detail: 'Email hoặc mật khẩu không đúng' }] })
+
+    await expect(api('/me')).rejects.toMatchObject({ status: 401 })
+    await expect(api('/auth/login', { method: 'POST', body: {}, auth: false })).rejects.toMatchObject({ message: 'Email hoặc mật khẩu không đúng' })
+    expect(calls(fetchMock, 'POST /api/auth/refresh')).toHaveLength(1)
+    await expect(refreshSession()).resolves.toBeNull()
   })
 })

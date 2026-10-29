@@ -71,7 +71,7 @@ public sealed record BookingDto(
     string? GuestNote, string? InternalNote, string? CancelReason, DateTime? HoldUntil,
     DateTime? ConfirmedAt, DateTime? CheckedInAt, DateTime? CheckedOutAt, DateTime? CancelledAt,
     StayPolicyDto Policy, TransferInfoDto? Transfer, List<PaymentDto> Payments, List<BookingEventDto> Events,
-    DateTime CreatedAt, DateTime UpdatedAt);
+    DateTime CreatedAt, DateTime UpdatedAt, ReviewDto? Review, bool CanReview);
 
 /// <summary>Xem trước huỷ: daysBefore = ngày nhận phòng − hôm nay; refundAmount theo chính sách homestay.</summary>
 public sealed record CancelPreviewDto(bool CanCancel, string? Reason, int DaysBefore, decimal Paid, int RefundPercent, decimal RefundAmount);
@@ -98,3 +98,41 @@ public sealed record OccupancyDayDto(DateOnly Date, int Sold, int Sellable, doub
 public sealed record DashboardDto(
     DateOnly Date, List<BookingSummaryDto> Arrivals, List<BookingSummaryDto> Departures, List<BookingSummaryDto> InHouse,
     List<BookingSummaryDto> PendingHolds, List<OccupancyDayDto> Next7Days);
+
+// --- Khách lưu trú (/api/admin/guests) ---
+
+/// <summary>Gộp theo SĐT; upcoming = chờ cọc / đã xác nhận / đang ở; cancelled = huỷ / hết hạn / không đến; paid = Σ thu − Σ hoàn.</summary>
+public sealed record GuestDto(
+    string Phone, string Name, string? Email, bool HasAccount, int Bookings, int Stays, int Upcoming, int Cancelled,
+    decimal Paid, DateOnly LastCheckIn);
+
+// --- Đánh giá (docs/02-nghiep-vu.md §10) ---
+
+public sealed record ReviewRequest(int? Rating, string? Comment);
+
+public sealed record ReviewDto(long Id, byte Rating, string? Comment, DateTime CreatedAt);
+
+/// <summary>author = tên rút gọn ("Minh T."), stayedAt = ngày nhận phòng.</summary>
+public sealed record PublicReviewDto(long Id, byte Rating, string? Comment, string Author, string RoomName, DateOnly StayedAt, DateTime CreatedAt);
+
+public sealed record AdminReviewDto(
+    long Id, long BookingId, string BookingCode, long HomestayId, string HomestayName, string GuestName, byte Rating, string? Comment,
+    bool IsHidden, DateTime CreatedAt);
+
+public sealed record ReviewVisibilityRequest(bool? IsHidden);
+
+// --- Báo cáo (/api/admin/reports – docs/02-nghiep-vu.md §11) ---
+
+/// <summary>occupancy = soldNights / sellableNights (0–1); adr = roomRevenue / soldNights; revPar = roomRevenue / sellableNights.</summary>
+public sealed record ReportMetricsDto(int SellableNights, int SoldNights, double Occupancy, decimal RoomRevenue, decimal Adr, decimal RevPar);
+
+/// <summary>Dòng theo tháng (key "2026-11") hoặc theo homestay (key = id): collected = thu − hoàn theo thời điểm thu; bookings / cancelled = tạo trong kỳ.</summary>
+public sealed record ReportRowDto(string Key, string Label, ReportMetricsDto Metrics, decimal Collected, int Bookings, int Cancelled);
+
+public sealed record SourceRowDto(BookingSource Source, int Bookings, int Cancelled, int SoldNights, decimal RoomRevenue);
+
+/// <summary>collected = Σ thu − Σ hoàn (refunded tách riêng); cancelRate = (huỷ + không đến) / đặt phòng tạo trong kỳ.</summary>
+public sealed record ReportDto(
+    DateOnly From, DateOnly To, long? HomestayId, ReportMetricsDto Total, decimal Collected, decimal Refunded,
+    int Bookings, int Cancelled, int NoShow, int Expired, double CancelRate,
+    List<ReportRowDto> Months, List<ReportRowDto> Homestays, List<SourceRowDto> Sources);

@@ -30,6 +30,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
 
     public static readonly string UploadsRoot = Path.Combine(Path.GetTempPath(), "homestay-test-uploads");
 
+    /// <summary>Thư mục .eml của test (chưa cấu hình SMTP → PickupFolderMailSender).</summary>
+    public static readonly string MailRoot = Path.Combine(Path.GetTempPath(), "homestay-test-mail");
+
     private static readonly SemaphoreSlim DbLock = new(1, 1);
     private static bool _dbReady;
 
@@ -47,6 +50,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         Environment.SetEnvironmentVariable("Seed__AdminPassword", AdminPassword);
         // Test tự gọi ExpireDueAsync sau khi tua đồng hồ – dịch vụ nền chạy song song sẽ làm kết quả khó đoán
         Environment.SetEnvironmentVariable("Workers__HoldExpiry", "false");
+        Environment.SetEnvironmentVariable("Workers__EmailOutbox", "false");
+        Environment.SetEnvironmentVariable("Smtp__Host", "");
+        Environment.SetEnvironmentVariable("Smtp__PickupPath", MailRoot);
         // Ảnh test ghi vào thư mục tạm, không lẫn vào backend/storage/uploads của dev
         Environment.SetEnvironmentVariable("Uploads__Path", UploadsRoot);
         Environment.SetEnvironmentVariable("Payment__BankName", "Ngân hàng Test");

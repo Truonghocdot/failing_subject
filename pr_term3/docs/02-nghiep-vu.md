@@ -133,7 +133,8 @@ Trang homestay có **lịch 2 tháng** cho từng phòng: ngày còn trống / �
 | `confirmed → no_show` | Nhân viên | `hôm nay > checkIn`; giữ tiền cọc, nhả đêm |
 
 - Rời trạng thái giữ đêm (`cancelled`, `expired`, `no_show`, `checked_out`) → xoá **mọi** dòng `room_nights` của đặt phòng (đêm đã qua không ai đặt được nữa).
-  Trả phòng sớm: đêm còn lại trống ngay; lịch phòng vẽ thanh tới ngày thực trả; bảng điều khiển tính vào "khách đi hôm nay".
+  Trả phòng sớm: mọi đêm từ hôm nay trở đi (kể cả trả ngay trong ngày nhận phòng) trống ngay; lịch phòng vẽ thanh tới ngày thực trả (dải mỏng, ô bên dưới vẫn đặt được);
+  bảng điều khiển tính vào "khách đi hôm nay".
 - Tổng tiền không tự đổi khi trả sớm / no-show – nhân viên ghi khoản hoàn nếu đồng ý trả lại.
 
 Đổi ngày / đổi phòng (nhân viên, khi `pending` / `confirmed`): khoá đêm mới + nhả đêm cũ trong 1 transaction (trùng → `409`, đặt phòng giữ nguyên); tính lại giá
@@ -199,14 +200,16 @@ Theo khoảng ngày (≤ 366 ngày), lọc homestay:
 | **RevPAR** | Doanh thu phòng / đêm có thể bán |
 | Tiền thu thực tế | Σ khoản thu − Σ hoàn theo `paidAt` |
 | Theo nguồn | Số đặt phòng, doanh thu theo `source` |
-| Tỉ lệ huỷ | Đặt phòng `cancelled + no_show` / tổng đặt phòng tạo trong khoảng |
+| Tỉ lệ huỷ | Đặt phòng `cancelled + no_show` / tổng đặt phòng tạo trong khoảng (`expired` – hết hạn giữ chỗ – báo riêng, không tính là huỷ) |
 
 Bảng điều khiển hằng ngày: khách đến hôm nay, khách đi hôm nay, đang ở, đặt phòng `pending` sắp hết hạn giữ chỗ, công suất 7 ngày tới.
 
 ## 12. Thông báo email
 
 Gửi khi: đặt phòng tạo (`pending` – kèm hướng dẫn chuyển khoản), xác nhận, huỷ (kèm số hoàn), nhắc trước ngày nhận phòng 1 ngày.
-Ghi vào hàng đợi `email_outbox`, dịch vụ nền gửi qua SMTP; dev không cấu hình SMTP → ghi file `.eml` vào `storage/mail/` để xem.
+Ghi vào hàng đợi `email_outbox` trong cùng transaction với thay đổi đặt phòng (rollback thì không có thư), dịch vụ nền gửi qua SMTP;
+dev không cấu hình SMTP → ghi file `.eml` vào `storage/mail/` để xem. Đặt hộ kèm đủ cọc → chỉ 1 thư xác nhận; khách không có email → không gửi;
+thư nhắc gửi 1 lần (ghi `booking_events` loại `reminder`); gửi lỗi thử lại tối đa 5 lần rồi đánh dấu `failed`.
 
 ## 13. Bảo mật dữ liệu
 

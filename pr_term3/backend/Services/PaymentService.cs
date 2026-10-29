@@ -20,7 +20,7 @@ public sealed class PaymentOptions
 public sealed record PaymentInput(PaymentKind Kind, PaymentMethod Method, decimal Amount, DateTime? PaidAt, string? Note);
 
 /// <summary>Ghi / xoá khoản thu – hoàn (docs/02-nghiep-vu.md §8). Đủ cọc → đặt phòng chờ cọc tự chuyển "đã xác nhận".</summary>
-public sealed class PaymentService(AppDbContext db, AppClock clock)
+public sealed class PaymentService(AppDbContext db, AppClock clock, EmailService emails)
 {
     /// <summary>Nhân viên chỉ xoá được khoản ghi nhầm trong 24 giờ; admin xoá lúc nào cũng được.</summary>
     public static readonly TimeSpan StaffDeleteWindow = TimeSpan.FromHours(24);
@@ -52,7 +52,9 @@ public sealed class PaymentService(AppDbContext db, AppClock clock)
         });
         db.Log(b, "payment", $"{KindLabel(input.Kind)} {Vnd.Format(input.Amount)} ({MethodLabel(input.Method)})"
                              + (input.Note is null ? "" : $" – {input.Note}"), actor.Id);
+        var wasPending = b.Status == BookingStatus.Pending;
         AutoConfirm(b, actor.Id, now);
+        if (wasPending && b.Status == BookingStatus.Confirmed) emails.Queue(b, b.Homestay, b.Room, EmailKind.Confirmed);
 
         await db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);

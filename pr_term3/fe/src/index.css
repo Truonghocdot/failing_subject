@@ -21,3 +21,18 @@
     @apply bg-slate-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
   }
 }
+
+/* Khoá phòng trên lịch: sọc chéo (không chỉ dựa vào màu) */
+:root {
+  --stripe-a: #e2e8f0;
+  --stripe-b: #f8fafc;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --stripe-a: #334155;
+    --stripe-b: #1e293b;
+  }
+}
+@utility bg-stripes {
+  background-image: repeating-linear-gradient(135deg, var(--stripe-a) 0 6px, var(--stripe-b) 6px 12px);
+}

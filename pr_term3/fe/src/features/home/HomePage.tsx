@@ -1,45 +1,75 @@
-import { CalendarDays, MapPin, Search, Users } from 'lucide-react'
+import { MapPin } from 'lucide-react'
 import { Link } from 'react-router'
+import { Alert, LoadingBlock } from '../../components/Feedback'
+import { errorMessage, query } from '../../lib/api'
+import { readFilters, useProvinces, useStays } from '../stays/api'
+import { SearchForm } from '../stays/SearchForm'
+import { StayCard } from '../stays/StayCard'
 
-const provinces = ['Đà Lạt', 'Sa Pa', 'Hội An', 'Phú Quốc', 'Hà Giang', 'Vũng Tàu']
+const featuredFilters = { ...readFilters(new URLSearchParams()), sort: 'rating' as const }
 
-/** Trang chủ khách – ô tìm kiếm thật làm ở Phase 4 (hiện chỉ là bố cục). */
+/** Trang chủ khách: ô tìm kiếm lớn, tỉnh phổ biến, homestay điểm cao. */
 export function HomePage() {
+  const provinces = useProvinces()
+  const featured = useStays(featuredFilters)
+
   return (
     <div className="flex flex-col gap-10">
-      <section className="rounded-3xl bg-gradient-to-br from-brand-700 to-brand-800 px-6 py-10 text-white md:px-10 md:py-14">
+      <section className="rounded-3xl bg-gradient-to-br from-brand-700 to-brand-800 px-4 py-8 text-white sm:px-6 md:px-10 md:py-14">
         <h1 className="max-w-xl text-3xl font-semibold tracking-tight md:text-4xl">Tìm homestay ưng ý cho chuyến đi tới</h1>
-        <p className="mt-3 max-w-xl text-brand-50">Giá rõ từng đêm, cọc trước 30%, huỷ miễn phí trước 7 ngày.</p>
-        <div className="mt-6 grid gap-2 rounded-2xl bg-white p-2 text-slate-700 sm:grid-cols-[1.4fr_1fr_0.8fr_auto]" aria-label="Tìm kiếm (Phase 4)">
-          <Fake icon={MapPin} text="Bạn muốn đi đâu?" />
-          <Fake icon={CalendarDays} text="Nhận – trả phòng" />
-          <Fake icon={Users} text="2 khách" />
-          <Link to="/stays" className="flex items-center justify-center gap-2 rounded-xl bg-brand-700 px-5 py-3 font-medium text-white hover:bg-brand-800">
-            <Search className="size-4" aria-hidden />
-            Tìm
-          </Link>
+        <p className="mt-3 max-w-xl text-brand-50">Giá rõ từng đêm, giữ chỗ trước – chuyển khoản cọc sau, huỷ sớm được hoàn tiền.</p>
+        <div className="mt-6">
+          <SearchForm />
         </div>
       </section>
 
-      <section>
-        <h2 className="mb-4 text-xl font-semibold">Điểm đến phổ biến</h2>
-        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          {provinces.map((p) => (
-            <li key={p} className="rounded-2xl border border-slate-200 bg-white p-4 text-center font-medium dark:border-slate-800 dark:bg-slate-900">
-              {p}
-            </li>
-          ))}
-        </ul>
+      <section aria-labelledby="provinces-title">
+        <h2 id="provinces-title" className="mb-4 text-xl font-semibold">
+          Điểm đến phổ biến
+        </h2>
+        {provinces.isError ? (
+          <Alert>{errorMessage(provinces.error)}</Alert>
+        ) : (
+          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            {(provinces.data ?? []).slice(0, 12).map((p) => (
+              <li key={p.province}>
+                <Link
+                  to={`/stays${query({ province: p.province })}`}
+                  className="flex h-full flex-col items-center gap-1 rounded-2xl border border-slate-200 bg-white p-4 text-center hover:border-brand-600 focus-visible:outline-2 focus-visible:outline-brand-600 dark:border-slate-800 dark:bg-slate-900"
+                >
+                  <MapPin className="size-5 text-brand-700 dark:text-brand-100" aria-hidden />
+                  <span className="font-medium">{p.province}</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">{p.homestays} homestay</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
-    </div>
-  )
-}
 
-function Fake({ icon: Icon, text }: { icon: typeof MapPin; text: string }) {
-  return (
-    <div className="flex items-center gap-2 rounded-xl px-3 py-3 text-sm text-slate-600">
-      <Icon className="size-4 text-brand-700" aria-hidden />
-      {text}
+      <section aria-labelledby="featured-title">
+        <div className="mb-4 flex items-end justify-between gap-3">
+          <h2 id="featured-title" className="text-xl font-semibold">
+            Được yêu thích
+          </h2>
+          <Link to="/stays?sort=rating" className="text-sm font-medium text-brand-700 hover:underline dark:text-brand-100">
+            Xem tất cả
+          </Link>
+        </div>
+        {featured.isPending ? (
+          <LoadingBlock />
+        ) : featured.isError ? (
+          <Alert>{errorMessage(featured.error)}</Alert>
+        ) : featured.data.items.length === 0 ? (
+          <p className="text-sm text-slate-600 dark:text-slate-300">Chưa có homestay nào mở bán.</p>
+        ) : (
+          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {featured.data.items.slice(0, 6).map((s) => (
+              <StayCard key={s.id} stay={s} trip={featuredFilters} />
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   )
 }

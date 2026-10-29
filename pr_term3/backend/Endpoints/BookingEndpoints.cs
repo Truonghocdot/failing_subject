@@ -24,6 +24,8 @@ public static class BookingEndpoints
         mine.MapGet("/{code}", Get).WithName("MyBooking").WithSummary("Chi tiết + hướng dẫn chuyển khoản + các mốc trạng thái");
         mine.MapGet("/{code}/cancel-preview", CancelPreview).WithName("MyBookingCancelPreview").WithSummary("Số tiền được hoàn nếu huỷ bây giờ");
         mine.MapPost("/{code}/cancel", Cancel).WithName("CancelMyBooking").WithSummary("Huỷ đặt phòng (trước ngày nhận phòng)");
+        mine.MapPost("/{code}/review", Review).WithName("ReviewMyBooking")
+            .WithSummary($"Đánh giá 1–5 sao + nhận xét (sau trả phòng, trong {ReviewService.WindowDays} ngày, 1 lần)");
 
         return app;
     }
@@ -73,6 +75,19 @@ public static class BookingEndpoints
         var id = await bookings.FindOwnAsync(user.GetUserId(), code, ct);
         await bookings.CancelAsync(id, user.GetActor(), byStaff: false, reason, refundOverride: null, ct);
         return TypedResults.Ok(await queries.GuestDetailAsync(id, ct));
+    }
+
+    private static async Task<Results<Created<ReviewDto>, ValidationProblem>> Review(
+        string code, ReviewRequest body, ClaimsPrincipal user, BookingService bookings, ReviewService reviews, CancellationToken ct)
+    {
+        var v = new RequestValidator()
+            .Int("rating", body.Rating, 1, 5, null, out var rating, "Số sao")
+            .OptionalText("comment", body.Comment, 1000, out var comment, "Nhận xét");
+        if (!v.IsValid) return v.Problem();
+
+        var id = await bookings.FindOwnAsync(user.GetUserId(), code, ct);
+        var review = await reviews.CreateAsync(id, user.GetUserId(), (byte)rating, comment, ct);
+        return TypedResults.Created($"/api/bookings/{code}", review);
     }
 
     private static async Task<Results<Ok<BookingDto>, ValidationProblem>> Lookup(LookupRequest body, BookingQueryService queries, CancellationToken ct)

@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { mockApi, renderRoute } from '../../test/render'
 import { adminNav } from './nav'
+import { asAdmin, asStaff, loggedIn } from '../../test/fixtures'
 
 const healthy = { 'GET /health': [200, { status: 'ok', database: 'up' }] } as const
 
@@ -45,23 +46,50 @@ describe('khu khách', () => {
 })
 
 describe('khu quản trị', () => {
-  it('sidebar đủ mục, mục đang mở được đánh dấu, chuyển trang khi bấm', async () => {
-    mockApi({ ...healthy })
+  const dashboard = { 'GET /api/admin/dashboard': [200, { date: '2026-11-01', arrivals: [], departures: [], inHouse: [], pendingHolds: [], next7Days: [] }] } as const
+
+  it('admin: sidebar đủ mục, mục đang mở được đánh dấu, chuyển trang khi bấm', async () => {
+    mockApi({ ...asAdmin, ...dashboard, 'GET /api/admin/calendar': [200, { from: '2026-11-01', to: '2026-11-14', rooms: [] }], 'GET /api/admin/homestays': [200, []] })
     renderRoute('/admin')
 
-    const nav = screen.getByRole('navigation', { name: 'Điều hướng quản trị' })
+    const nav = await screen.findByRole('navigation', { name: 'Điều hướng quản trị' })
     expect(within(nav).getAllByRole('link')).toHaveLength(adminNav.length)
     expect(within(nav).getByRole('link', { name: 'Hôm nay' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByText('Quản Trị')).toBeInTheDocument()
 
     await userEvent.click(within(nav).getByRole('link', { name: 'Lịch phòng' }))
-    expect(screen.getByRole('heading', { name: 'Lịch phòng' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Lịch phòng' })).toBeInTheDocument()
     expect(within(nav).getByRole('link', { name: 'Lịch phòng' })).toHaveAttribute('aria-current', 'page')
   })
 
-  it('404 trong khu quản trị dẫn về trang Hôm nay', () => {
+  it('lễ tân: ẩn mục chỉ admin; gõ thẳng /admin/users → Không có quyền', async () => {
+    mockApi({ ...asStaff, ...dashboard })
+    const { router } = renderRoute('/admin')
+
+    const nav = await screen.findByRole('navigation', { name: 'Điều hướng quản trị' })
+    expect(within(nav).getAllByRole('link').map((a) => a.textContent)).toEqual(['Hôm nay', 'Lịch phòng', 'Đặt phòng', 'Khách'])
+    await router.navigate('/admin/users')
+    expect(await screen.findByRole('heading', { name: 'Không có quyền' })).toBeInTheDocument()
+    expect(screen.getByText('Mục này chỉ dành cho quản trị viên.')).toBeInTheDocument()
+  })
+
+  it('khách đã đăng nhập vào /admin → Không có quyền; chưa đăng nhập → /login?next', async () => {
+    mockApi({ ...loggedIn })
+    renderRoute('/admin')
+    expect(await screen.findByText('Khu quản trị chỉ dành cho lễ tân và quản trị viên.')).toBeInTheDocument()
+  })
+
+  it('chưa đăng nhập → /login?next=/admin/calendar', async () => {
     mockApi({ ...healthy })
+    const { router } = renderRoute('/admin/calendar')
+    await screen.findByRole('heading', { name: 'Đăng nhập' })
+    expect(router.state.location.search).toBe(`?next=${encodeURIComponent('/admin/calendar')}`)
+  })
+
+  it('404 trong khu quản trị dẫn về trang Hôm nay', async () => {
+    mockApi({ ...asAdmin })
     renderRoute('/admin/khong-co')
 
-    expect(screen.getByRole('link', { name: 'Về trang Hôm nay' })).toHaveAttribute('href', '/admin')
+    expect(await screen.findByRole('link', { name: 'Về trang Hôm nay' })).toHaveAttribute('href', '/admin')
   })
 })

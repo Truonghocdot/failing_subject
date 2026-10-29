@@ -18,6 +18,7 @@ public static class StayEndpoints
         api.MapGet("/stays/{slug}", Detail).WithName("GetStay").WithSummary("Chi tiết homestay: ảnh, tiện nghi, chính sách, phòng");
         api.MapGet("/stays/{slug}/calendar", Calendar).WithName("GetStayCalendar")
             .WithSummary($"Lịch còn trống + giá từng đêm của mỗi phòng (from, to – tối đa {AvailabilityService.MaxCalendarDays} ngày)");
+        api.MapGet("/stays/{slug}/reviews", Reviews).WithName("GetStayReviews").WithSummary("Đánh giá đang hiện (mới nhất trước, page)");
         api.MapPost("/quotes", Quote).WithName("Quote").WithSummary("Báo giá từng đêm, tổng, tiền cọc, còn trống không");
 
         return app;
@@ -60,6 +61,14 @@ public static class StayEndpoints
         var v = new RequestValidator().DateRange(start, to ?? start.AddDays(59), AvailabilityService.MaxCalendarDays, out var f, out var t);
         if (!v.IsValid) return v.Problem();
         return TypedResults.Ok(await stays.CalendarAsync(slug, f, t, ct));
+    }
+
+    private static async Task<Results<Ok<PagedResult<PublicReviewDto>>, ValidationProblem>> Reviews(
+        string slug, int? page, ReviewService reviews, CancellationToken ct)
+    {
+        var v = new RequestValidator().Int("page", page, 1, 1000, 1, out var pageNumber, "Trang");
+        if (!v.IsValid) return v.Problem();
+        return TypedResults.Ok(await reviews.ListPublicAsync(slug, pageNumber, ct));
     }
 
     private static async Task<Results<Ok<QuoteDto>, ValidationProblem>> Quote(
