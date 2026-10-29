@@ -74,7 +74,9 @@ public sealed class AuthService(AppDbContext db, TokenService tokens, TimeProvid
         // Chỉ báo "bị khoá" khi đã đúng mật khẩu → không lộ thông tin cho người dò
         if (!user.IsActive) throw ApiProblemException.Forbidden(AccountLocked);
 
-        user.LastLoginAt = Now;
+        // Lệnh riêng, không chung transaction với việc chèn refresh token: chèn token giữ khoá chia sẻ dòng users (FK),
+        // còn UPDATE cần khoá ghi → 2 lần đăng nhập cùng tài khoản đồng thời sẽ deadlock nếu gộp 1 transaction
+        await db.Users.Where(u => u.Id == user.Id).ExecuteUpdateAsync(s => s.SetProperty(u => u.LastLoginAt, Now), ct);
         return await IssueAsync(user, userAgent, ct);
     }
 

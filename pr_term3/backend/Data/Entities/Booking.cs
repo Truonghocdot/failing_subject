@@ -85,7 +85,7 @@ public class RoomNight
 }
 
 /// <summary>Khoá phòng bảo trì / chủ dùng – từ ngày đến ngày, gồm 2 đầu.</summary>
-public class RoomBlock
+public class RoomBlock : ICreatedAt
 {
     public long Id { get; set; }
     public long RoomId { get; set; }
@@ -96,7 +96,7 @@ public class RoomBlock
     public DateTime CreatedAt { get; set; }
 }
 
-public class Payment
+public class Payment : ICreatedAt
 {
     public long Id { get; set; }
     public long BookingId { get; set; }
@@ -113,7 +113,7 @@ public class Payment
 }
 
 /// <summary>Nhật ký đặt phòng: ai, lúc nào, đổi gì.</summary>
-public class BookingEvent
+public class BookingEvent : ICreatedAt
 {
     public long Id { get; set; }
     public long BookingId { get; set; }
@@ -131,7 +131,7 @@ public class BookingEvent
     public DateTime CreatedAt { get; set; }
 }
 
-public class Review
+public class Review : ICreatedAt
 {
     public long Id { get; set; }
     public long BookingId { get; set; }
@@ -144,7 +144,7 @@ public class Review
 }
 
 /// <summary>Hàng đợi email – dịch vụ nền gửi (Phase 6).</summary>
-public class EmailOutbox
+public class EmailOutbox : ICreatedAt
 {
     public long Id { get; set; }
     public required string ToEmail { get; set; }

@@ -20,6 +20,8 @@ public sealed class ApiExceptionHandler(IProblemDetailsService problemDetails) :
             _ => null,
         };
         if (problem is null) return false;
+        if (exception is ApiProblemException { Extensions.Count: > 0 } withExtensions)
+            foreach (var (key, value) in withExtensions.Extensions) problem.Extensions[key] = value;
 
         httpContext.Response.StatusCode = problem.Status!.Value;
         return await problemDetails.TryWriteAsync(new ProblemDetailsContext

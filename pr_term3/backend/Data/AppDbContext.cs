@@ -55,6 +55,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, TimePro
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         var now = time.GetUtcNow().UtcDateTime;
+        foreach (var entry in ChangeTracker.Entries<ICreatedAt>())
+            if (entry.State == EntityState.Added && entry.Entity.CreatedAt == default) entry.Entity.CreatedAt = now;
         foreach (var entry in ChangeTracker.Entries<ITimestamped>())
         {
             if (entry.State == EntityState.Added) entry.Entity.CreatedAt = entry.Entity.UpdatedAt = now;

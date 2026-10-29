@@ -16,6 +16,8 @@ public static class AdminEndpoints
     public static IEndpointRouteBuilder MapAdminEndpoints(this IEndpointRouteBuilder app)
     {
         var admin = app.MapGroup("/api/admin").RequireAuthorization(Roles.StaffPolicy);
+        admin.MapAdminCatalog();
+        admin.MapAdminBookings();
 
         var users = admin.MapGroup("/users").WithTags("Quản trị – nhân viên").RequireAuthorization(Roles.AdminPolicy);
         users.MapGet("", ListStaff).WithName("ListStaff").WithSummary("Danh sách lễ tân / quản trị (q: email, tên, SĐT)");

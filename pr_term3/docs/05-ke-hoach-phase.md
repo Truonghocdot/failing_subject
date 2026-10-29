@@ -19,8 +19,8 @@ Phase 0 ─▶ Phase 1 ─▶ Phase 2 ─▶ Phase 3 ─────────
 |---|---|---|---|---|
 | 0 | Khung dự án, `.env`, MySQL, layout 2 khu | 0.5 ngày | – | ✅ Xong |
 | 1 | Backend: schema đầy đủ + Auth + vai trò + admin đầu tiên | 1.5 ngày | 0 | ✅ Xong |
-| 2 | Backend: homestay, phòng, ảnh, giá, tìm kiếm, lịch trống, báo giá | 2 ngày | 1 | ⬜ |
-| 3 | Backend: đặt phòng, khoá đêm, vòng đời, cọc – huỷ – hoàn, thu tiền, khoá phòng, hết hạn giữ chỗ | 2 ngày | 2 | ⬜ |
+| 2 | Backend: homestay, phòng, ảnh, giá, tìm kiếm, lịch trống, báo giá | 2 ngày | 1 | ✅ Xong |
+| 3 | Backend: đặt phòng, khoá đêm, vòng đời, cọc – huỷ – hoàn, thu tiền, khoá phòng, hết hạn giữ chỗ | 2 ngày | 2 | ✅ Xong |
 | 4 | Frontend khu khách: tìm kiếm, chi tiết, đặt phòng, đặt phòng của tôi, tra cứu | 2 ngày | 3 | ⬜ |
 | 5 | Frontend quản trị: hôm nay, **lịch phòng**, đặt phòng, homestay / phòng / giá, nhân viên | 2.5 ngày | 3 | ⬜ |
 | 6 | Báo cáo (công suất, ADR, RevPAR, doanh thu), đánh giá, email | 1 ngày | 4, 5 | ⬜ |
@@ -95,29 +95,59 @@ service xoá dòng khoá đêm trong cùng transaction (Phase 3). Số cố đ�
 
 ## Phase 2 – Backend: homestay, phòng, giá, tìm kiếm (2 ngày)
 
-- [ ] `CatalogService` + `/api/admin/homestays`, `/rooms` (CRUD, slug tự sinh bỏ dấu, ẩn / ngưng thay vì xoá khi đã có đặt phòng).
-- [ ] Upload ảnh (kiểm tra magic bytes, ≤ 5 MB, ≤ 20 ảnh, đổi tên guid), sắp xếp, ảnh bìa; phục vụ `/uploads/...`.
-- [ ] `PricingService`: giá từng đêm (override > cuối tuần > cơ bản), phụ thu khách, phí dọn, cọc làm tròn nghìn; `/api/admin/rates` (đặt / xoá cho khoảng ngày, nhiều phòng).
-- [ ] `AvailabilityService`: `/api/stays` (lọc tỉnh, ngày, khách, tiện nghi, giá; "giá từ"; phân trang), `/api/stays/{slug}`, `/calendar`, `/api/quotes`.
-- [ ] Test: giá qua tuần có thứ Sáu / thứ Bảy + ngày lễ, phụ thu, min nights, tìm kiếm loại phòng kín / homestay ẩn.
+- [x] `CatalogService` + `/api/admin/homestays`, `/homestays/{id}/rooms`, `/rooms/{id}` (CRUD, slug tự sinh bỏ dấu – trùng thêm `-2`, sửa tên không đổi slug;
+  đã có đặt phòng / khoá phòng → `409` "hãy ẩn / ngưng thay vì xoá"). Lễ tân **đọc** được danh sách homestay / phòng (cần cho lịch, tạo đặt phòng), ghi: chỉ admin.
+- [x] Upload ảnh (magic bytes JPG / PNG / WEBP + đọc kích thước từ header, ≤ 5 MB, ≤ 20 ảnh, tên guid), sắp xếp (ảnh đầu = bìa), xoá (xoá cả file);
+  phục vụ `/uploads/...` chỉ 3 loại ảnh, `Cache-Control: immutable`, `nosniff`.
+- [x] `Pricing` (hàm thuần) + `PricingService`: giá từng đêm (override > cuối tuần > cơ bản), phụ thu khách, phí dọn, cọc làm tròn lên nghìn (không vượt tổng);
+  `/api/admin/rates` GET / PUT / DELETE cho khoảng ngày (≤ 366), nhiều phòng (≤ 50).
+- [x] `AvailabilityService`: `/api/provinces`, `/api/stays` (tỉnh, `q`, ngày, khách, tiện nghi, `priceMax`, sắp xếp, phân trang 12), `/api/stays/{slug}`,
+  `/calendar` (≤ 62 ngày), `/api/quotes`. "Giá từ" = tổng thấp nhất (gồm phụ thu, phí dọn) / số đêm; không chọn ngày → giá cơ bản thấp nhất.
+- [x] Test: `StayTests` (DoD đúng ngày 31/12/2026 → 03/01/2027, làm tròn cọc, báo giá qua API có thứ Sáu override + thứ Bảy, lỗi ngày / khách / min nights,
+  tìm kiếm loại homestay ẩn + phòng kín + lọc khách / tiện nghi / giá, tỉnh, lịch), `CatalogTests` (slug, chính sách, phòng, quyền, xoá, ảnh, giá theo ngày).
 
 **DoD**: phòng 800 000 / cuối tuần 1 000 000, ngày 01/01 giá 1 500 000, phụ thu 150 000 / khách vượt 2, phí dọn 100 000:
 báo giá 3 khách từ thứ Năm 31/12 → Chủ nhật 03/01 = 800 000 + 1 500 000 + 1 000 000 + 3 × 150 000 + 100 000 = **3 850 000**, cọc 30% = **1 155 000**.
+
+**Kết quả** (đã kiểm tra 29/10/2026)
+- ✅ Trên app thật (phòng mẫu "Phòng Đồi Thông", admin đặt giá 01/01 = 1 500 000): `POST /api/quotes` 31/12/2026 → 03/01/2027, 3 khách →
+  `800 000 (base) + 1 500 000 (override) + 1 000 000 (weekend) + 450 000 + 100 000 = 3 850 000`, cọc **1 155 000**; lịch hiện đúng giá 01/01.
+- ✅ Upload PNG thật qua proxy `:5174` → 201 (64×40), `GET /uploads/...` → `image/png` + `immutable` + `nosniff`; file `<?php` đổi đuôi `.jpg` → 400; xoá → file mất (404).
 
 ---
 
 ## Phase 3 – Backend: đặt phòng (2 ngày)
 
-- [ ] `BookingService`: tạo (khách / nhân viên), mã `HS-XXXX-XXXX`, ảnh chụp giá, khoá `room_nights` trong transaction, `409` khi trùng / giá đổi.
-- [ ] Vòng đời [02 §6.3](02-nghiep-vu.md#63-vòng-đời): confirm, check-in, check-out (trả sớm nhả đêm), no-show, huỷ (xem trước + tính hoàn), đổi ngày / phòng.
-- [ ] `PaymentService`: ghi / xoá khoản thu – hoàn, tự xác nhận khi đủ cọc, `paid`, `amountDue`, `paymentStatus`.
-- [ ] Khoá phòng bảo trì; `booking_events` cho mọi thay đổi; `/api/bookings` của khách, `/lookup`.
-- [ ] `HoldExpiryWorker` (mỗi phút) – test bằng `FakeTimeProvider`.
-- [ ] `/api/admin/calendar`, `/api/admin/dashboard`, `/api/admin/bookings` (lọc, tìm).
-- [ ] Test: **2 request đặt cùng phòng cùng đêm song song → đúng 1 thành công**; huỷ nhả đêm → đặt lại được; chính sách hoàn 7 / 3 ngày; hết hạn giữ chỗ.
+- [x] `BookingService`: tạo (khách / nhân viên – kèm cọc thu ngay), mã `HS-XXXX-XXXX` (Crockford base32, `RandomNumberGenerator`), ảnh chụp giá
+  (`booking_nights` + tổng), khoá `room_nights` trong transaction, `409` khi trùng (lỗi 1062 / deadlock 1213 / lock wait 1205) / giá đổi (kèm `quote` mới).
+- [x] Vòng đời [02 §6.3](02-nghiep-vu.md#63-vòng-đời): confirm (chưa đủ cọc → bắt buộc lý do), check-in (trong khoảng ngày ở), check-out (còn nợ → bắt buộc lý do;
+  trả sớm nhả đêm), no-show (từ ngày sau ngày nhận), huỷ (xem trước + tính hoàn; nhân viên sửa số hoàn), đổi ngày / phòng (tính lại giá hoặc giữ giá cũ).
+  Mọi thay đổi khoá dòng booking (`SELECT … FOR UPDATE`) trước → thu tiền, huỷ, hết hạn chạy đồng thời không ghi đè nhau.
+- [x] `PaymentService`: ghi / xoá khoản thu – hoàn (lễ tân xoá trong 24 giờ, admin bất kỳ lúc nào), tự xác nhận khi đủ cọc, `money: {paid, amountDue, pendingRefund, status}`.
+- [x] Khoá phòng bảo trì (`/api/admin/blocks`, trùng đặt phòng → `409` kèm danh sách mã); `booking_events` cho mọi thay đổi;
+  `/api/bookings` của khách (người khác → `404`), `/lookup` (mã + SĐT, rate limit), hướng dẫn chuyển khoản (`Payment__*`).
+- [x] `HoldExpiryWorker` (mỗi phút, `PeriodicTimer` theo `TimeProvider`) → `BookingService.ExpireDueAsync` – test bằng `FakeTimeProvider`.
+- [x] `/api/admin/calendar` (≤ 62 ngày, thanh đặt phòng + khoá + giá từng ngày), `/api/admin/dashboard`, `/api/admin/bookings` (lọc trạng thái, homestay, ngày, nguồn, tìm mã / tên / SĐT).
+- [x] Test: `BookingTests` (**6 request đặt chồng đêm song song → đúng 1 thành công**, huỷ nhả đêm → đặt lại được, giá đổi, chính sách 10 / 7 / 6 / 3 / 2 ngày,
+  quyền xem, tra cứu, vòng đời khách vãng lai, quy tắc trạng thái, khoá phòng, đổi ngày / phòng, lọc + xoá khoản thu),
+  `BookingClockTests` (tua đồng hồ – chạy tuần tự: hết hạn giữ chỗ, no-show, trả sớm, xoá khoản thu quá 24 giờ).
 
 **DoD**: kịch bản đặt online → hết hạn sau 24 giờ (đồng hồ giả) → phòng trống lại; đặt → ghi cọc → `confirmed` → check-in → thu đủ → check-out;
 huỷ trước 5 ngày đặt phòng đã cọc 1 155 000 → hoàn 577 500 (50%). `dotnet test` pass.
+
+**Kết quả** (đã kiểm tra 29/10/2026)
+- ✅ `dotnet test Homestay.slnx` – **111/111** (chạy 2 lần liên tiếp); không có thay đổi model (`has-pending-model-changes` → không cần migration mới).
+- ✅ Hết hạn giữ chỗ: tua 23 giờ → vẫn `pending`; tua thêm 1 giờ 1 phút → `expired`, `room_nights` trống, báo giá `available = true`, ghi cọc muộn → `409`.
+- ✅ Kịch bản HTTP qua proxy Vite `:5174` – **33/33** (cả Phase 2): giá đổi → `409` kèm báo giá mới; đặt online → `pending`, mã `HS-…`, hướng dẫn CK 1 155 000;
+  khách khác đặt chồng → `409`, xem → `404`; ghi cọc 1 155 000 → tự `confirmed`; huỷ trước 5 ngày → hoàn **577 500** → ghi hoàn → `refunded`; huỷ nhả đêm → đặt lại được;
+  khách vãng lai: tạo + cọc → `confirmed` → check-in → check-out khi còn nợ `409` → thu đủ → `checked_out` / `paid`; tra cứu mã + SĐT; 2 request song song → `201` + `409`;
+  khoá phòng → báo giá `available = false`; bảng điều khiển, lịch phòng 14 ngày; khách gọi lịch phòng → `403`.
+
+Phát hiện khi làm:
+- Đăng nhập cùng tài khoản song song bị **deadlock** MySQL (chèn refresh token giữ khoá chia sẻ dòng `users` qua FK + `UPDATE last_login_at` cần khoá ghi trong cùng
+  transaction) → tách `last_login_at` thành lệnh riêng (`AuthService.LoginAsync`). Lỗi có từ Phase 1, lộ ra khi test đăng nhập admin seed song song nhiều hơn.
+- Trả phòng sớm ngay trong ngày không hiện ở "khách đi hôm nay" → bảng điều khiển tính cả đặt phòng `checked_out` có `checked_out_at` trong ngày.
+- EF ghi log mức Error cho lỗi trùng khoá đã được đổi thành `409` → tắt category `Microsoft.EntityFrameworkCore.Update` (lỗi thật vẫn được middleware ghi log 500).
 
 ---
 

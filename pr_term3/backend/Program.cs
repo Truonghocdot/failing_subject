@@ -6,6 +6,7 @@ using backend.Data;
 using backend.Endpoints;
 using backend.Hosting;
 using backend.Services;
+using backend.Workers;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -32,6 +33,8 @@ builder.Services.AddOptions<AppOptions>()
     .ValidateOnStart();
 
 builder.Services.Configure<SeedOptions>(builder.Configuration.GetSection(SeedOptions.Section));
+builder.Services.Configure<UploadOptions>(builder.Configuration.GetSection(UploadOptions.Section));
+builder.Services.Configure<PaymentOptions>(builder.Configuration.GetSection(PaymentOptions.Section));
 
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<AppClock>();
@@ -40,6 +43,16 @@ builder.Services.AddSingleton<RefreshCookie>();
 builder.Services.AddScoped<Seeder>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<StaffService>();
+builder.Services.AddSingleton<UploadStorage>();
+builder.Services.AddScoped<CatalogService>();
+builder.Services.AddScoped<PricingService>();
+builder.Services.AddScoped<AvailabilityService>();
+builder.Services.AddScoped<BookingService>();
+builder.Services.AddScoped<BookingQueryService>();
+builder.Services.AddScoped<PaymentService>();
+builder.Services.AddScoped<CalendarService>();
+// Hết hạn giữ chỗ mỗi phút; test tắt (Workers:HoldExpiry=false) và gọi BookingService.ExpireDueAsync trực tiếp
+if (builder.Configuration.GetValue("Workers:HoldExpiry", true)) builder.Services.AddHostedService<HoldExpiryWorker>();
 
 // Enum trả JSON dạng snake_case giống trong DB: "guest", "checked_in", "bank_transfer"...
 builder.Services.ConfigureHttpJsonOptions(o =>
@@ -88,6 +101,7 @@ app.Logger.LogInformation("Môi trường {Environment}, file cấu hình {EnvFi
 
 app.UseExceptionHandler();
 app.UseStatusCodePages();
+app.UseUploads();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();
@@ -116,6 +130,8 @@ if (migrate || app.Configuration.GetValue("Database:SeedOnStartup", true))
 app.MapHealthEndpoints();
 app.MapAuthEndpoints();
 app.MapMeEndpoints();
+app.MapStayEndpoints();
+app.MapBookingEndpoints();
 app.MapAdminEndpoints();
 
 app.Run();

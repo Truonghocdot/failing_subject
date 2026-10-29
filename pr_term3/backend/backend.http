@@ -69,3 +69,123 @@ Authorization: Bearer {{token}}
 Content-Type: application/json
 
 { "password": "matkhaumoi789" }
+
+### ===== Phase 2: tìm kiếm, báo giá (công khai) =====
+GET {{host}}/api/provinces
+
+### Tìm homestay (ngày, khách, tiện nghi, giá tối đa / đêm, sort=relevance|price|rating)
+GET {{host}}/api/stays?province=Lâm Đồng&checkIn=2026-12-31&checkOut=2027-01-03&guests=3&amenities=wifi&sort=price
+
+### Chi tiết homestay + lịch trống 2 tháng
+GET {{host}}/api/stays/da-lat-pine-house
+
+###
+GET {{host}}/api/stays/da-lat-pine-house/calendar?from=2026-12-01&to=2027-01-29
+
+### Báo giá từng đêm (roomId lấy từ chi tiết homestay)
+POST {{host}}/api/quotes
+Content-Type: application/json
+
+{ "roomId": 1, "checkIn": "2026-12-31", "checkOut": "2027-01-03", "guests": 3 }
+
+### [admin] Homestay: danh sách / tạo (slug tự sinh) / thêm phòng
+GET {{host}}/api/admin/homestays
+Authorization: Bearer {{token}}
+
+###
+POST {{host}}/api/admin/homestays
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "name": "Sapa Cloud Cabin", "province": "Lào Cai", "address": "Bản Cát Cát, Sa Pa", "amenities": ["wifi", "mountain_view"], "depositPercent": 30 }
+
+###
+POST {{host}}/api/admin/homestays/1/rooms
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "name": "Phòng Mây", "baseGuests": 2, "maxGuests": 3, "basePrice": 900000, "weekendPrice": 1100000, "extraGuestFee": 150000, "cleaningFee": 100000 }
+
+### [admin] Giá riêng theo ngày (lễ, Tết) cho nhiều phòng
+PUT {{host}}/api/admin/rates
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "roomIds": [1, 2], "from": "2027-01-01", "to": "2027-01-01", "price": 1500000, "note": "Tết Dương lịch" }
+
+### ===== Phase 3: đặt phòng =====
+### Khách đặt online (expectedTotal = tổng ở báo giá; khác → 409 kèm báo giá mới)
+POST {{host}}/api/bookings
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "roomId": 1, "checkIn": "2026-12-31", "checkOut": "2027-01-03", "guests": 3, "guestName": "Nguyễn Văn Khách", "guestPhone": "0912 345 678", "expectedTotal": 3850000 }
+
+### Đặt phòng của tôi / chi tiết / xem trước huỷ / huỷ
+GET {{host}}/api/bookings?status=pending,confirmed
+Authorization: Bearer {{token}}
+
+###
+GET {{host}}/api/bookings/HS-XXXX-XXXX/cancel-preview
+Authorization: Bearer {{token}}
+
+###
+POST {{host}}/api/bookings/HS-XXXX-XXXX/cancel
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "reason": "Đổi kế hoạch" }
+
+### Tra cứu không cần đăng nhập
+POST {{host}}/api/bookings/lookup
+Content-Type: application/json
+
+{ "code": "HS-XXXX-XXXX", "phone": "0912345678" }
+
+### [lễ tân] Tạo hộ khách gọi điện, thu cọc ngay → confirmed
+POST {{host}}/api/admin/bookings
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "roomId": 2, "checkIn": "2026-11-10", "checkOut": "2026-11-12", "guests": 2, "guestName": "Trần Thị Gọi", "guestPhone": "0987654321", "source": "phone",
+  "payment": { "kind": "deposit", "method": "bank_transfer", "amount": 500000 } }
+
+### [lễ tân] Ghi khoản thu / hoàn (kind: deposit|balance|extra|refund, method: cash|bank_transfer|card|ewallet)
+POST {{host}}/api/admin/bookings/1/payments
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "kind": "balance", "method": "cash", "amount": 1000000 }
+
+### [lễ tân] Check-in / check-out (còn nợ → gửi reason) / no-show / huỷ (bắt buộc reason)
+POST {{host}}/api/admin/bookings/1/check-in
+Authorization: Bearer {{token}}
+
+###
+POST {{host}}/api/admin/bookings/1/check-out
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{}
+
+### [lễ tân] Đổi ngày / phòng (keepPrice: giữ giá cũ – cần reason)
+POST {{host}}/api/admin/bookings/1/reschedule
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "roomId": 2, "checkIn": "2026-11-11", "checkOut": "2026-11-13", "keepPrice": false }
+
+### [lễ tân] Lịch phòng 14 ngày, bảng điều khiển, khoá phòng
+GET {{host}}/api/admin/calendar?homestayId=1&from=2026-11-01&to=2026-11-14
+Authorization: Bearer {{token}}
+
+###
+GET {{host}}/api/admin/dashboard
+Authorization: Bearer {{token}}
+
+###
+POST {{host}}/api/admin/blocks
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "roomId": 3, "from": "2026-11-20", "to": "2026-11-21", "reason": "Sơn lại tường" }

@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using backend.Contracts;
 using backend.Data;
+using backend.Services;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -27,6 +28,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
     public const string AdminEmail = "admin@homestay.test";
     public const string AdminPassword = "admin-test-123";
 
+    public static readonly string UploadsRoot = Path.Combine(Path.GetTempPath(), "homestay-test-uploads");
+
     private static readonly SemaphoreSlim DbLock = new(1, 1);
     private static bool _dbReady;
 
@@ -42,6 +45,13 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         Environment.SetEnvironmentVariable("RateLimit__AuthPermitPerMinute", "100000");
         Environment.SetEnvironmentVariable("Seed__AdminEmail", AdminEmail);
         Environment.SetEnvironmentVariable("Seed__AdminPassword", AdminPassword);
+        // Test tự gọi ExpireDueAsync sau khi tua đồng hồ – dịch vụ nền chạy song song sẽ làm kết quả khó đoán
+        Environment.SetEnvironmentVariable("Workers__HoldExpiry", "false");
+        // Ảnh test ghi vào thư mục tạm, không lẫn vào backend/storage/uploads của dev
+        Environment.SetEnvironmentVariable("Uploads__Path", UploadsRoot);
+        Environment.SetEnvironmentVariable("Payment__BankName", "Ngân hàng Test");
+        Environment.SetEnvironmentVariable("Payment__AccountNumber", "0123456789");
+        Environment.SetEnvironmentVariable("Payment__AccountName", "HOMESTAY TEST");
     }
 
     /// <summary>
@@ -116,6 +126,15 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         {
             DbLock.Release();
         }
+    }
+
+    /// <summary>"Hôm nay" theo múi giờ homestay của đồng hồ giả.</summary>
+    public DateOnly Today => Services.GetRequiredService<AppClock>().Today;
+
+    public async Task<T> WithServiceAsync<TService, T>(Func<TService, Task<T>> action) where TService : notnull
+    {
+        using var scope = Services.CreateScope();
+        return await action(scope.ServiceProvider.GetRequiredService<TService>());
     }
 
     public async Task<T> WithDbAsync<T>(Func<AppDbContext, Task<T>> action)

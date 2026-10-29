@@ -37,9 +37,10 @@ backend/
 │   ├── Seed.cs                # admin đầu tiên + dữ liệu mẫu (Development)
 │   └── Migrations/
 ├── Endpoints/                 # Public*, Booking*, Admin* – mỗi nhóm route 1 file; RequestValidator, ApiExceptionHandler
-├── Hosting/                   # EnvFile, (Phase 7) WebHosting, FileLogger
-├── Services/                  # AuthService, CatalogService, PricingService, AvailabilityService, BookingService,
-│                              # PaymentService, CalendarService, ReviewService, ReportService, EmailService
+├── Hosting/                   # EnvFile, Uploads (phục vụ /uploads), (Phase 7) WebHosting, FileLogger
+├── Services/                  # AuthService, StaffService, CatalogService, PricingService, AvailabilityService, BookingService,
+│                              # BookingQueryService, BookingLocks, PaymentService, CalendarService (lịch, khoá phòng, dashboard),
+│                              # (Phase 6) ReviewService, ReportService, EmailService
 └── Workers/                   # HoldExpiryWorker, EmailOutboxWorker (BackgroundService + PeriodicTimer)
 ```
 
@@ -89,9 +90,13 @@ backend/
 | POST | `/bookings/{id}/confirm` · `/check-in` · `/check-out` · `/no-show` | 🛎 chuyển trạng thái (§6.3) |
 | POST | `/bookings/{id}/cancel` | 🛎 `{reason, refundAmount?}` |
 | POST / DELETE | `/bookings/{id}/payments` · `/payments/{paymentId}` | 🛎 ghi / xoá khoản thu – hoàn |
-| GET / POST / DELETE | `/blocks` | 🛎 khoá phòng bảo trì |
-| CRUD | `/homestays`, `/homestays/{id}/photos` (multipart), `/rooms` | 🔑 |
-| GET / PUT / DELETE | `/rates?roomIds&from&to` | 🔑 giá riêng theo ngày (đặt cho khoảng ngày, nhiều phòng) |
+| GET | `/bookings/{id}/cancel-preview` | 🛎 số hoàn theo chính sách (nhân viên huỷ được tới hết ngày nhận phòng) |
+| GET / POST / DELETE | `/blocks?homestayId&from` · `/blocks/{id}` | 🛎 khoá phòng bảo trì `{roomId, from, to, reason}` – trùng đặt phòng → `409` + `bookings: [mã]` |
+| GET | `/homestays` · `/homestays/{id}` | 🛎 danh sách / chi tiết (cả homestay ẩn, mọi phòng, ảnh) – lễ tân cần để lọc lịch, tạo đặt phòng |
+| POST / PUT / DELETE | `/homestays` · `/homestays/{id}` | 🔑 slug tự sinh khi tạo (sửa tên không đổi slug); xoá khi đã có đặt phòng → `409` |
+| POST · PUT · DELETE | `/homestays/{id}/photos` (multipart `file`) · `/photos/order` `{photoIds}` · `/photos/{photoId}` | 🔑 ảnh: JPG / PNG / WEBP ≤ 5 MB, ≤ 20 ảnh; ảnh đầu = bìa |
+| POST · PUT / DELETE | `/homestays/{id}/rooms` · `/rooms/{roomId}` | 🔑 phòng; xoá khi đã có đặt phòng / khoá phòng → `409` |
+| GET / PUT / DELETE | `/rates?roomIds=1,2&from&to` | 🔑 giá riêng theo ngày: GET giá thực tế từng đêm, PUT `{roomIds, from, to, price, note}`, DELETE bỏ giá riêng |
 | GET / POST | `/users?q` | 🔑 danh sách lễ tân / quản trị · tạo `{email, password, fullName, phone?, role: staff\|admin}` |
 | PUT | `/users/{id}` | 🔑 `{fullName, phone?, role, isActive}` – không tự hạ quyền / khoá mình (`409`), luôn còn ≥ 1 admin |
 | POST | `/users/{id}/reset-password` | 🔑 `{password}` → `204`, đăng xuất mọi thiết bị của nhân viên đó |
@@ -122,8 +127,9 @@ backend/
 | `Database__MigrateOnStartup` / `Database__SeedOnStartup` | `false` / `true` | Development luôn migrate |
 | `App__TimeZone` | `Asia/Ho_Chi_Minh` | "Hôm nay", hạn giữ chỗ, chính sách huỷ |
 | `App__PublicBaseUrl` | `http://localhost:5174` | Link trong email |
-| `Payment__BankName` / `__AccountNumber` / `__AccountName` | – | Hiện trong hướng dẫn chuyển khoản |
+| `Payment__BankName` / `__AccountNumber` / `__AccountName` | – (Development: tài khoản demo trong `appsettings.Development.json`) | Hiện trong hướng dẫn chuyển khoản (nội dung CK = mã đặt phòng); trống → không hiện |
 | `Uploads__Path` | `storage/uploads` | Ảnh homestay (tương đối theo thư mục backend) |
+| `Workers__HoldExpiry` | `true` | Dịch vụ nền hết hạn giữ chỗ mỗi phút (test tắt, gọi `ExpireDueAsync` trực tiếp) |
 | `Smtp__Host` / `__Port` / `__User` / `__Password` / `__From` | trống → ghi `.eml` vào `storage/mail` | Phase 6 |
 | `RateLimit__AuthPermitPerMinute` | `10` | Đăng ký / đăng nhập / tra cứu |
 
@@ -132,6 +138,14 @@ backend/
 - Enum ↔ chuỗi snake_case (`Data/EnumText.cs`) dùng chung cho DB, JSON (`JsonStringEnumConverter(SnakeCaseLower)`), CHECK constraint.
 - JwtBearer `OnTokenValidated` (`Auth/Roles.cs`): mỗi request có token kiểm tra user còn `is_active` và vai trò khớp claim `role` (1 truy vấn theo khoá chính).
 - `DateOnly` ↔ `date` (converter riêng – provider Oracle đọc `date` ra `DateTime`), `DateTime` UTC ↔ `datetime(6)`, tiền `decimal(15,2)` (VND làm tròn số nguyên).
-- Tạo / đổi / huỷ đặt phòng chạy trong transaction; vi phạm unique `room_nights` (MySQL error 1062) → `409` – có test 2 request song song.
+- Tạo / đổi / huỷ đặt phòng chạy trong transaction; vi phạm khoá chính `room_nights` (MySQL 1062, hoặc deadlock 1213 / lock wait 1205 khi nhiều request chèn chồng đêm)
+  → `409` – có test 6 request song song (`Services/BookingLocks.cs`).
+- Mọi thao tác trên 1 đặt phòng (thu tiền, xác nhận, huỷ, hết hạn, đổi ngày) mở transaction và **khoá dòng booking trước** (`SELECT id … FOR UPDATE`),
+  rồi mới đọc → dịch vụ hết hạn và lễ tân ghi cọc cùng lúc không ghi đè nhau.
+- Giá: `Pricing` là hàm thuần (test đúng ví dụ DoD), `PricingService` chỉ đọc / ghi `rate_overrides`. Tìm kiếm lọc thô bằng SQL rồi tính "giá từ" trong bộ nhớ
+  (đủ cho vài chục homestay; nhiều hơn cần bảng giá tính sẵn).
+- Bảng có `created_at` không cần `updated_at` (ảnh, khoản thu, nhật ký...) implement `ICreatedAt` – `AppDbContext` tự gán khi thêm.
+- Thời điểm trong body (`paidAt`) có múi giờ (`…Z`, `+07:00`) được đổi về UTC; không có múi giờ → coi là UTC.
+- Đăng nhập cập nhật `last_login_at` bằng lệnh riêng (không chung transaction chèn refresh token) – tránh deadlock khi 1 tài khoản đăng nhập song song.
 - `HoldExpiryWorker`: mỗi phút `UPDATE … WHERE status = 'pending' AND hold_until < now` theo lô, nhả `room_nights`, ghi `booking_events`.
 - Ảnh phục vụ tĩnh ở `/uploads/{homestayId}/{guid}.webp|jpg|png` với `Cache-Control` dài hạn (tên file không bao giờ đổi nội dung).

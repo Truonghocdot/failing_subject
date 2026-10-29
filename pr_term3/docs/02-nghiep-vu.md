@@ -89,7 +89,9 @@ deposit         = làm tròn lên hàng nghìn( total × depositPercent / 100 )
 Phòng **còn trống** khi: phòng `active`, homestay `active`, `maxGuests ≥ guests`, `đêm ≥ minNights`,
 và **không có** dòng `room_nights` nào trong `[checkIn, checkOut)`.
 
-Kết quả gom theo homestay: ảnh bìa, điểm đánh giá, số phòng còn trống, **"giá từ"** = tổng thấp nhất / số đêm. Sắp xếp: phù hợp (mặc định) · giá tăng · đánh giá.
+Kết quả gom theo homestay: ảnh bìa, điểm đánh giá, số phòng còn trống, **"giá từ"** = tổng thấp nhất (gồm phụ thu khách thêm, phí dọn) / số đêm
+(không chọn ngày → giá cơ bản thấp nhất / đêm, không tính phòng trống). Homestay không còn phòng nào phù hợp bị loại khỏi kết quả.
+Sắp xếp: phù hợp (mặc định – tên bắt đầu bằng từ khoá, nhiều phòng trống, nhiều đánh giá) · giá tăng · đánh giá.
 Trang homestay có **lịch 2 tháng** cho từng phòng: ngày còn trống / đã kín và giá mỗi đêm.
 
 ## 6. Đặt phòng
@@ -128,10 +130,14 @@ Trang homestay có **lịch 2 tháng** cho từng phòng: ngày còn trống / �
 | `→ cancelled` | Khách (đặt của mình), nhân viên | Từ `pending` / `confirmed`, **trước ngày nhận phòng** (nhân viên: cả ngày nhận phòng); tính hoàn tiền §7 |
 | `confirmed → checked_in` | Nhân viên | `hôm nay ≥ checkIn` và `hôm nay < checkOut` |
 | `checked_in → checked_out` | Nhân viên | Đã thu đủ (`còn phải thu = 0`) hoặc nhân viên ghi lý do bỏ qua; trả phòng sớm → nhả các đêm còn lại |
-| `confirmed → no_show` | Nhân viên | `hôm nay > checkIn`; giữ tiền cọc, nhả đêm từ hôm nay |
+| `confirmed → no_show` | Nhân viên | `hôm nay > checkIn`; giữ tiền cọc, nhả đêm |
 
-Đổi ngày / đổi phòng (nhân viên, khi `pending` / `confirmed`): khoá đêm mới + nhả đêm cũ trong 1 transaction; tính lại giá
-(hoặc "giữ giá cũ" có ghi lý do). Mọi thay đổi trạng thái, đổi ngày, thu / hoàn tiền ghi vào **nhật ký đặt phòng** (`booking_events`: ai, lúc nào, nội dung).
+- Rời trạng thái giữ đêm (`cancelled`, `expired`, `no_show`, `checked_out`) → xoá **mọi** dòng `room_nights` của đặt phòng (đêm đã qua không ai đặt được nữa).
+  Trả phòng sớm: đêm còn lại trống ngay; lịch phòng vẽ thanh tới ngày thực trả; bảng điều khiển tính vào "khách đi hôm nay".
+- Tổng tiền không tự đổi khi trả sớm / no-show – nhân viên ghi khoản hoàn nếu đồng ý trả lại.
+
+Đổi ngày / đổi phòng (nhân viên, khi `pending` / `confirmed`): khoá đêm mới + nhả đêm cũ trong 1 transaction (trùng → `409`, đặt phòng giữ nguyên); tính lại giá
+(hoặc "giữ giá cũ" – chỉ khi giữ nguyên số đêm, bắt buộc lý do). Mọi thay đổi trạng thái, đổi ngày, thu / hoàn tiền ghi vào **nhật ký đặt phòng** (`booking_events`: ai, lúc nào, nội dung).
 
 ## 7. Cọc, huỷ & hoàn tiền
 
@@ -144,7 +150,8 @@ Chính sách theo homestay; `daysBefore = checkIn − hôm nay`:
 | `daysBefore < partialRefundDays` | 0% |
 | Đặt `pending` chưa trả gì | Huỷ miễn phí |
 
-- Khách xem trước số tiền được hoàn trước khi bấm huỷ. Nhân viên có thể sửa số hoàn (ghi lý do – VD thiên tai).
+- Khách xem trước số tiền được hoàn trước khi bấm huỷ. Nhân viên có thể sửa số hoàn (≤ số đã trả, ghi lý do – VD thiên tai).
+- Số hoàn làm tròn tới đồng (1 155 000 × 50% = 577 500). Chính sách lấy theo homestay **lúc huỷ**.
 - Số hoàn được ghi là **khoản hoàn** (`refund`) khi nhân viên thực hiện chuyển trả; trước đó đặt phòng hiện "chờ hoàn X đ".
 
 ## 8. Thanh toán (ghi nhận)
@@ -162,7 +169,11 @@ amountDue   = total + Σ extra − paid          (còn phải thu)
 paymentStatus: unpaid (paid = 0) · deposit_paid (0 < paid < total) · paid (paid ≥ total) · refunded (đã huỷ và hoàn hết)
 ```
 
-Ghi nhầm → xoá khoản thu trong vòng 24 giờ (admin: bất kỳ lúc nào); có ghi nhật ký.
+Ghi nhầm → xoá khoản thu trong vòng 24 giờ (admin: bất kỳ lúc nào); có ghi nhật ký. Xoá không tự lùi trạng thái (VD đã `confirmed` vẫn giữ) –
+nhân viên xem nhật ký và xử lý. Không xoá được khoản thu nếu sau khi xoá số đã hoàn lớn hơn số đã thu (xoá khoản hoàn trước).
+
+- Đặt phòng `cancelled` / `expired` / `no_show` chỉ nhận khoản **hoàn** (khách chuyển cọc muộn sau khi hết hạn → tạo đặt phòng mới hoặc hoàn lại).
+- `paidAt` không được ở tương lai; bỏ trống = lúc ghi.
 
 ## 9. Khoá phòng (bảo trì / chủ dùng)
 

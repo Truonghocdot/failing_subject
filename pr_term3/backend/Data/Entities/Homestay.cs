@@ -46,7 +46,7 @@ public static class Amenity
     ];
 }
 
-public class Photo
+public class Photo : ICreatedAt
 {
     public long Id { get; set; }
     public long HomestayId { get; set; }
@@ -97,7 +97,7 @@ public class Room : ITimestamped
 }
 
 /// <summary>Giá riêng 1 đêm (lễ, Tết, cao điểm) – ưu tiên cao nhất (docs/02-nghiep-vu.md §4).</summary>
-public class RateOverride
+public class RateOverride : ICreatedAt
 {
     public long RoomId { get; set; }
     public DateOnly Date { get; set; }

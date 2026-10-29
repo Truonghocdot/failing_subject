@@ -2,7 +2,8 @@ namespace backend.Services;
 
 /// <summary>
 /// Lỗi nghiệp vụ có mã HTTP rõ ràng (400, 401, 404, 409...) – ApiExceptionHandler chuyển thành ProblemDetails.
-/// Có <see cref="Errors"/> → trả kèm <c>errors: { field: [msg] }</c> để FE hiện lỗi ngay dưới ô nhập.
+/// Có <see cref="Errors"/> → trả kèm <c>errors: { field: [msg] }</c> để FE hiện lỗi ngay dưới ô nhập;
+/// <see cref="Extensions"/> → thêm trường vào ProblemDetails (VD báo giá mới khi "Giá đã thay đổi").
 /// </summary>
 public sealed class ApiProblemException(int statusCode, string title, string detail, IDictionary<string, string[]>? errors = null)
     : Exception(detail)
@@ -10,6 +11,13 @@ public sealed class ApiProblemException(int statusCode, string title, string det
     public int StatusCode { get; } = statusCode;
     public string Title { get; } = title;
     public IDictionary<string, string[]>? Errors { get; } = errors;
+    public Dictionary<string, object?> Extensions { get; } = [];
+
+    public ApiProblemException With(string key, object? value)
+    {
+        Extensions[key] = value;
+        return this;
+    }
 
     public static ApiProblemException Unauthorized(string detail) => new(StatusCodes.Status401Unauthorized, "Chưa xác thực", detail);
 
