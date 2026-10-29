@@ -72,8 +72,8 @@ Ngày đến ─▶ check-in ─▶ thu phần còn lại ─▶ check-out ─�
 | Môi trường | Cách chạy |
 |---|---|
 | Dev | 2 terminal: `dotnet run` (backend :5100) + `npm run dev` (fe :5174, proxy `/api`) |
-| Release | `dotnet publish -c Release -o publish` (tự build fe → `wwwroot`) → `publish\backend.exe` (Phase 7) |
-| Windows Service | `scripts\install-service.ps1` – `UseWindowsService()` (Phase 7) |
+| Release | `dotnet publish -c Release -o publish` (tự build fe → `wwwroot`) → `publish\backend.exe` – 1 tiến trình ở `:5100` ([07](07-van-hanh.md)) |
+| Windows Service | `scripts\install-service.ps1` (Run as Administrator) – service `HomestayBooking`, `UseWindowsService()` |
 | Azure (tuỳ chọn) | App Service + Azure Database for MySQL (Phase 8) |
 
 Cổng: backend **5100**, Vite **5174** (tránh trùng VsMovie 5080, Sổ Chi Tiêu 5090 / 5173).

@@ -24,7 +24,7 @@ Phase 0 ─▶ Phase 1 ─▶ Phase 2 ─▶ Phase 3 ─────────
 | 4 | Frontend khu khách: tìm kiếm, chi tiết, đặt phòng, đặt phòng của tôi, tra cứu | 2 ngày | 3 | ✅ Xong |
 | 5 | Frontend quản trị: hôm nay, **lịch phòng**, đặt phòng, homestay / phòng / giá, nhân viên | 2.5 ngày | 3 | ✅ Xong |
 | 6 | Báo cáo (công suất, ADR, RevPAR, doanh thu), đánh giá, email | 1 ngày | 4, 5 | ✅ Xong |
-| 7 | Hoàn thiện: phục vụ `fe/dist`, Windows Service, bảo mật, trợ năng, test thủ công | 1 ngày | 6 | ⬜ |
+| 7 | Hoàn thiện: phục vụ `fe/dist`, Windows Service, bảo mật, trợ năng, test thủ công | 1 ngày | 6 | ✅ Xong |
 | 8 | Mở rộng (tuỳ chọn) | – | 7 | ⬜ |
 
 > Phase 4 và 5 chỉ phụ thuộc Phase 3 → làm nhóm 2 người: A làm **4**, B làm **5** song song.
@@ -255,14 +255,43 @@ Phát hiện khi làm:
 
 ---
 
-## Phase 7 – Hoàn thiện & phát hành (1 ngày)
+## Phase 7 – Hoàn thiện & phát hành (1 ngày) ✅
 
-- [ ] Tách code theo route; backend phục vụ `fe/dist` + fallback SPA; `dotnet publish` tự build FE.
-- [ ] `UseWindowsService`, script cài / gỡ service, log ra file, tự migrate khi khởi động (Production).
-- [ ] Security header (CSP…), tắt OpenAPI production, `Jwt__RefreshCookieSecure` khi có HTTPS.
-- [ ] Rà soát axe-core (WCAG AA), bàn phím, chế độ tối, 360 px; test thủ công toàn bộ luồng trên bản publish; tài liệu vận hành.
+- [x] Tách code theo route (`lazy` của React Router – trang chủ + khung khu khách tải ngay, mọi trang khác / cả khu quản trị là chunk riêng):
+  bundle chính **575 → 312 kB**, hết cảnh báo > 500 kB; `errorElement` báo "Ứng dụng vừa được cập nhật – Tải lại trang" khi tab cũ xin chunk đã xoá.
+  Backend phục vụ `wwwroot` + fallback SPA (`Hosting/WebHosting.MapSpa`: `assets/*` cache 1 năm, `index.html` `no-cache`, `/api/...` sai → 404 JSON,
+  file thiếu đuôi `.js/.jpg` → 404 thật); `dotnet publish` tự `npm ci` + `npm run build` rồi chép `fe/dist` vào `publish/wwwroot` (`-p:SkipFrontend=true` để bỏ qua).
+- [x] `UseWindowsService("HomestayBooking")`, content root = thư mục exe khi publish / chạy service; `scripts/install-service.ps1` (LocalService, quyền ghi
+  `logs` + `storage`, `.env` chỉ admin / SYSTEM / service đọc, delayed-auto, tự khởi động lại khi lỗi, `ASPNETCORE_ENVIRONMENT=Production`) + `uninstall-service.ps1`;
+  log ra file theo ngày (`Hosting/FileLogger`, giữ 14 ngày); `appsettings.Production.json`: log file, **tự migrate**, `App:PublicBaseUrl` = `:5100`.
+- [x] Security header trên mọi response (CSP chỉ cùng origin + `frame-ancestors 'none'`, `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy`);
+  OpenAPI chỉ Development; `Jwt__RefreshCookieSecure` hướng dẫn trong [07](07-van-hanh.md#6-bảo-mật-khi-chạy-production).
+- [x] Trợ năng: link "Bỏ qua tới nội dung chính" (2 layout), sửa tương phản chữ xám ở chế độ tối (mọi `text-slate-500` có biến thể `dark:`), giá trong ô lịch,
+  chữ "404"; thanh đặt phòng / khoá trên lịch bọc trong `role="gridcell"` (ARIA grid); bảng rộng cuộn ngang thành vùng focus được (`components/ScrollX`).
+  Tài liệu vận hành [docs/07-van-hanh.md](07-van-hanh.md).
+- [x] Test: backend `HostingTests` (SPA fallback, cache, 404 JSON, file thiếu → 404, security header kể cả 401, OpenAPI tắt, tìm `.env`, log file xoay vòng);
+  FE `layout.test` (chunk cũ → "Ứng dụng vừa được cập nhật").
 
 **DoD**: máy chỉ cần MySQL + .NET runtime – chạy `backend.exe` (hoặc service) là dùng được ở `http://localhost:5100`.
+
+**Kết quả** (đã kiểm tra 29/10/2026)
+- ✅ `dotnet test` – **136/136** (2 lần liên tiếp); `npm test` – **50/50**; `tsc -b`, `oxlint` sạch; `npm run build` không còn cảnh báo kích thước.
+- ✅ `dotnet publish -c Release -o publish` → chạy `publish\backend.exe` **từ `C:\Windows`** (Production, không có `dotnet run`, không có Vite):
+  `/health` → `ok / up`; F5 ở `/admin/calendar` → `index.html` `no-cache`; `assets/*.js` → `immutable`; `/openapi/v1.json` → 404; `/api/khong-co` → 404 JSON;
+  đủ security header; log ghi ở `publish\logs\backend-20261029.log`.
+- ✅ Tự migrate: chạy bản publish trỏ vào DB **trống** (`homestay_test` vừa tạo lại) → áp `InitialCreate` (0 → 16 bảng) + tạo admin đầu tiên, không nạp dữ liệu mẫu.
+- ✅ Kịch bản trình duyệt trên bản publish `:5100` (CSP bật thật, không lỗi console): Phase 4 **31/31** · Phase 5 **21/21** · Phase 6 **13/13** (thư `.eml`
+  ra `publish\storage\mail`) · bàn phím + chế độ tối **11/11** · ảnh (tải lên giao diện admin → hiện ở trang khách → xoá → 404) **5/5**.
+- ✅ axe-core 4.11 (WCAG 2.1 A + AA): **0 vi phạm** trên 24 trang × sáng / tối × 1280 / 360 px (lần đầu: 25 lỗi – tương phản, ARIA grid, vùng cuộn – đã sửa hết).
+- ⏳ Cài Windows Service **chưa chạy** (cần PowerShell Run as Administrator – để người dùng tự chạy `.\scripts\install-service.ps1`);
+  2 script đã kiểm cú pháp bằng PowerShell parser (0 lỗi), cùng khung đã chạy thật ở dự án Sổ Chi Tiêu.
+
+Phát hiện khi làm:
+- Thêm `MapFallback("/uploads/{**path}")` làm **mọi ảnh thật trả 404** (endpoint đã khớp thì `UseStaticFiles` bỏ qua) – test `CatalogTests` bắt được; bỏ đi vì
+  `MapFallbackToFile` mặc định chỉ khớp đường dẫn không có đuôi file. Kịch bản ảnh trên bản publish để giữ lỗi này không quay lại.
+- Production chưa có `Payment__*` → trang đặt phòng không hiện hướng dẫn chuyển khoản (đúng thiết kế) → ghi rõ trong `.env` mẫu của [07 §2](07-van-hanh.md#2-file-env-cạnh-backendexe).
+- `EmailService.QueueRemindersAsync` dùng `Take` không `OrderBy` (EF cảnh báo trong log production) → thêm `OrderBy(Id)`.
+- Test email lấy nhầm `.eml` của lần chạy trước (id outbox bắt đầu lại từ 1 sau khi tạo lại DB test) → factory xoá thư mục mail khi tạo lại DB.
 
 ---
 

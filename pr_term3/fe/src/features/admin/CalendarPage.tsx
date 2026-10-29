@@ -221,7 +221,7 @@ function RoomRow({ room, dates, onEmpty, onBlock }: { room: AdminCalendarRoom; d
               disabled={disabled}
               onClick={() => onEmpty(d)}
               aria-label={`${room.name}, ${dayLabel(d)}, ${shortMoney(room.prices[i])} – tạo đặt phòng / khoá phòng`}
-              className="flex h-full w-full items-end justify-center pb-1 text-[0.65rem] text-slate-400 hover:bg-brand-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand-600 disabled:cursor-default disabled:hover:bg-transparent dark:text-slate-500 dark:hover:bg-brand-700/20"
+              className="flex h-full w-full items-end justify-center pb-1 text-[0.65rem] text-slate-500 hover:bg-brand-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand-600 disabled:cursor-default disabled:hover:bg-transparent dark:text-slate-400 dark:hover:bg-brand-700/20"
             >
               {!inactive && d >= today() && shortMoney(room.prices[i])}
             </button>
@@ -229,32 +229,40 @@ function RoomRow({ room, dates, onEmpty, onBlock }: { room: AdminCalendarRoom; d
         )
       })}
       {bars.map((bar) => {
-        const style = { gridColumn: `${bar.start + 2} / span ${bar.span}`, gridRow: bar.lane + 1 }
-        const shape = `z-10 mx-0.5 flex items-center overflow-hidden border px-2 text-xs font-medium whitespace-nowrap ${bar.cutLeft ? 'rounded-l-none border-l-0' : 'rounded-l-md'} ${bar.cutRight ? 'rounded-r-none border-r-0' : 'rounded-r-md'}`
-        if (bar.kind === 'block')
-          return (
-            <button key={bar.key} type="button" style={style} onClick={() => onBlock(bar.block)} className={`${shape} my-1 bg-stripes border-slate-400 text-slate-800 dark:text-slate-100`} title={`Khoá: ${bar.block.reason}`}>
-              <Lock className="mr-1 size-3 shrink-0" aria-hidden />
-              <span className="truncate">{bar.block.reason}</span>
-            </button>
-          )
-        const b = bar.booking
+        const b = bar.kind === 'booking' ? bar.booking : null
+        const block = bar.kind === 'block' ? bar.block : null
         // Đã trả phòng / không đến: đêm đã nhả cho người khác đặt → thanh mỏng phía trên, ô bên dưới vẫn bấm được
-        const released = !['pending', 'confirmed', 'checked_in'].includes(b.status)
+        const released = b !== null && !['pending', 'confirmed', 'checked_in'].includes(b.status)
+        const shape = `flex h-full w-full min-w-0 items-center overflow-hidden border px-2 font-medium whitespace-nowrap ${released ? 'text-[0.625rem] leading-none' : 'text-xs'} ${
+          bar.cutLeft ? 'rounded-l-none border-l-0' : 'rounded-l-md'
+        } ${bar.cutRight ? 'rounded-r-none border-r-0' : 'rounded-r-md'}`
+        // Ô (gridcell) giữ vị trí trên lưới; nút / link bên trong – hàng của role="grid" chỉ được chứa ô
         return (
-          <Link
+          <div
             key={bar.key}
-            to={`/admin/bookings/${b.id}`}
-            style={style}
-            className={`${shape} ${released ? 'mt-0.5 h-4 self-start text-[0.625rem] leading-none' : 'my-1'} ${barTones[b.status]} hover:brightness-95 focus-visible:outline-2 focus-visible:outline-brand-600`}
-            title={`${b.code} · ${b.guestName} · ${b.guests} khách · ${statusLabels[b.status]}`}
-            aria-label={`${b.code} – ${b.guestName}, ${b.guests} khách, ${statusLabels[b.status]}, ${dayLabel(b.checkIn)} → ${dayLabel(b.checkOut)}`}
+            role="gridcell"
+            style={{ gridColumn: `${bar.start + 2} / span ${bar.span}`, gridRow: bar.lane + 1 }}
+            className={`z-10 mx-0.5 flex min-w-0 ${released ? 'mt-0.5 h-4 self-start' : 'my-1'}`}
           >
-            <span className="truncate">
-              {b.guestName}
-              {bar.span > 1 && <span className="font-normal opacity-80"> · {b.guests} khách</span>}
-            </span>
-          </Link>
+            {block ? (
+              <button type="button" onClick={() => onBlock(block)} className={`${shape} bg-stripes border-slate-400 text-slate-800 dark:text-slate-100`} title={`Khoá: ${block.reason}`}>
+                <Lock className="mr-1 size-3 shrink-0" aria-hidden />
+                <span className="truncate">{block.reason}</span>
+              </button>
+            ) : b && (
+              <Link
+                to={`/admin/bookings/${b.id}`}
+                className={`${shape} ${barTones[b.status]} hover:brightness-95 focus-visible:outline-2 focus-visible:outline-brand-600`}
+                title={`${b.code} · ${b.guestName} · ${b.guests} khách · ${statusLabels[b.status]}`}
+                aria-label={`${b.code} – ${b.guestName}, ${b.guests} khách, ${statusLabels[b.status]}, ${dayLabel(b.checkIn)} → ${dayLabel(b.checkOut)}`}
+              >
+                <span className="truncate">
+                  {b.guestName}
+                  {bar.span > 1 && <span className="font-normal opacity-80"> · {b.guests} khách</span>}
+                </span>
+              </Link>
+            )}
+          </div>
         )
       })}
     </div>

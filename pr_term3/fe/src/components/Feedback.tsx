@@ -7,7 +7,7 @@ export function Spinner({ className = 'size-5' }: { className?: string }) {
 
 export function FullPageSpinner({ label = 'Đang tải…' }: { label?: string }) {
   return (
-    <div role="status" className="flex min-h-dvh items-center justify-center gap-3 text-slate-500">
+    <div role="status" className="flex min-h-dvh items-center justify-center gap-3 text-slate-500 dark:text-slate-400">
       <Spinner />
       <span>{label}</span>
     </div>
@@ -16,7 +16,7 @@ export function FullPageSpinner({ label = 'Đang tải…' }: { label?: string }
 
 export function LoadingBlock({ label = 'Đang tải…' }: { label?: string }) {
   return (
-    <div role="status" className="flex items-center justify-center gap-3 py-12 text-slate-500">
+    <div role="status" className="flex items-center justify-center gap-3 py-12 text-slate-500 dark:text-slate-400">
       <Spinner />
       <span>{label}</span>
     </div>

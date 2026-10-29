@@ -9,6 +9,7 @@ using backend.Services;
 using backend.Workers;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting.WindowsServices;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
@@ -19,7 +20,21 @@ Console.OutputEncoding = System.Text.Encoding.UTF8;
 // Nạp .env vào biến môi trường trước khi build cấu hình (không có file thì bỏ qua) – xem Hosting/EnvFile.cs
 var envFile = EnvFile.Load();
 
-var builder = WebApplication.CreateBuilder(args);
+// Bản publish (có wwwroot cạnh backend.exe) hoặc Windows Service (thư mục hiện tại là System32):
+// lấy wwwroot / appsettings / storage / logs theo thư mục của exe, chạy từ đâu cũng được. Dev (dotnet run) giữ mặc định.
+var isPublished = File.Exists(Path.Combine(AppContext.BaseDirectory, "wwwroot", "index.html"));
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+{
+    Args = args,
+    ContentRootPath = isPublished || WindowsServiceHelpers.IsWindowsService() ? AppContext.BaseDirectory : null,
+});
+
+// Chạy như Windows Service khi được Service Control Manager khởi động; chạy tay thì không ảnh hưởng gì
+builder.Host.UseWindowsService(o => o.ServiceName = "HomestayBooking");
+
+var fileLog = builder.Configuration.GetSection(FileLoggerOptions.Section).Get<FileLoggerOptions>() ?? new FileLoggerOptions();
+if (fileLog.Enabled)
+    builder.Logging.AddProvider(new FileLoggerProvider(fileLog, builder.Environment.ContentRootPath, TimeProvider.System));
 
 builder.Services.AddOptions<JwtOptions>()
     .Bind(builder.Configuration.GetSection(JwtOptions.Section))
@@ -109,6 +124,7 @@ builder.Services.AddOpenApi();
 var app = builder.Build();
 app.Logger.LogInformation("Môi trường {Environment}, file cấu hình {EnvFile}", app.Environment.EnvironmentName, envFile ?? "(không có .env)");
 
+app.UseSecurityHeaders();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 app.UseUploads();
@@ -119,7 +135,7 @@ app.UseRateLimiter();
 // OpenAPI chỉ bật khi dev – production không lộ danh sách API
 if (app.Environment.IsDevelopment()) app.MapOpenApi(); // /openapi/v1.json
 
-// Development (hoặc Database:MigrateOnStartup) tự áp migration; sau đó tạo admin đầu tiên / dữ liệu mẫu.
+// Development hoặc Database:MigrateOnStartup (bật sẵn ở appsettings.Production.json – máy chạy không cần dotnet-ef) tự áp migration; sau đó tạo admin đầu tiên / dữ liệu mẫu.
 // DB chưa lên thì vẫn chạy (/health báo database: down) – sửa xong khởi động lại.
 var migrate = app.Environment.IsDevelopment() || app.Configuration.GetValue("Database:MigrateOnStartup", false);
 if (migrate || app.Configuration.GetValue("Database:SeedOnStartup", true))
@@ -143,6 +159,7 @@ app.MapMeEndpoints();
 app.MapStayEndpoints();
 app.MapBookingEndpoints();
 app.MapAdminEndpoints();
+app.MapSpa(); // sau cùng: giao diện (wwwroot) + fallback index.html cho route của React
 
 app.Run();
 

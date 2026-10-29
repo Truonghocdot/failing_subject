@@ -6,6 +6,7 @@ import { Button } from '../../components/Button'
 import { ColumnChart } from '../../components/ColumnChart'
 import { inputClass } from '../../components/Field'
 import { Alert, Card, LoadingBlock } from '../../components/Feedback'
+import { ScrollX } from '../../components/ScrollX'
 import { errorMessage, query } from '../../lib/api'
 import { downloadCsv } from '../../lib/csv'
 import { compactMoney, fullDate, isIsoDate, isoDate, money, percent, sourceLabels, today } from '../../lib/format'
@@ -125,7 +126,7 @@ function ReportView({ r, busy }: { r: Report; busy: boolean }) {
       </Section>
 
       <Section title="Theo homestay" action={<CsvButton onClick={() => downloadCsv(file('theo-homestay'), rowCsv('Homestay', r.homestays))} />}>
-        {r.homestays.length === 0 ? <p className="text-sm text-slate-500">Không có dữ liệu.</p> : <RowTable first="Homestay" rows={r.homestays} />}
+        {r.homestays.length === 0 ? <p className="text-sm text-slate-500 dark:text-slate-400">Không có dữ liệu.</p> : <RowTable first="Homestay" rows={r.homestays} />}
       </Section>
 
       <Section
@@ -141,7 +142,7 @@ function ReportView({ r, busy }: { r: Report; busy: boolean }) {
           />
         }
       >
-        <div className="overflow-x-auto">
+        <ScrollX label="Bảng theo nguồn đặt">
           <table className="w-full text-sm">
             <thead className="text-left text-xs text-slate-500 dark:text-slate-400">
               <tr>
@@ -166,7 +167,7 @@ function ReportView({ r, busy }: { r: Report; busy: boolean }) {
               ))}
             </tbody>
           </table>
-        </div>
+        </ScrollX>
       </Section>
 
       <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -210,7 +211,7 @@ function CsvButton({ onClick }: { onClick: () => void }) {
 
 function RowTable({ first, rows }: { first: string; rows: ReportRow[] }) {
   return (
-    <div className="overflow-x-auto">
+    <ScrollX label={`Bảng theo ${first.toLowerCase()}`}>
       <table className="w-full min-w-[44rem] text-sm">
         <thead className="text-left text-xs text-slate-500 dark:text-slate-400">
           <tr>
@@ -245,6 +246,6 @@ function RowTable({ first, rows }: { first: string; rows: ReportRow[] }) {
           ))}
         </tbody>
       </table>
-    </div>
+    </ScrollX>
   )
 }

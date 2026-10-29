@@ -108,7 +108,7 @@ export function BookingsPage() {
           {/* Điện thoại: thẻ; máy tính: bảng */}
           <ul className="flex flex-col divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white md:hidden dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">
             {list.data.items.map((b) => (
-              <BookingRow key={b.id} b={b} extra={<span className="font-mono text-xs text-slate-500">{b.code}</span>} />
+              <BookingRow key={b.id} b={b} extra={<span className="font-mono text-xs text-slate-500 dark:text-slate-400">{b.code}</span>} />
             ))}
           </ul>
           <div className="hidden overflow-x-auto rounded-2xl border border-slate-200 bg-white md:block dark:border-slate-800 dark:bg-slate-900">

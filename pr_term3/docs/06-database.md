@@ -166,4 +166,4 @@ App__TimeZone=Asia/Ho_Chi_Minh
 docker exec mysql-dev sh -c 'mysqldump -uroot -p"$MYSQL_ROOT_PASSWORD" --single-transaction --routines homestay' > homestay-$(date +%F).sql
 ```
 
-Kèm thư mục ảnh `backend/storage/uploads/` (ảnh không nằm trong DB).
+Kèm thư mục ảnh `backend/storage/uploads/` (bản publish: `<thư mục publish>\storage\uploads\`) – ảnh không nằm trong DB.

@@ -202,7 +202,7 @@ function Detail({ b }: { b: Booking }) {
                       </td>
                       <td className="py-1.5 pr-3 text-slate-600 dark:text-slate-300">
                         {p.note}
-                        {p.recordedBy && <span className="block text-xs text-slate-500">ghi bởi {p.recordedBy}</span>}
+                        {p.recordedBy && <span className="block text-xs text-slate-500 dark:text-slate-400">ghi bởi {p.recordedBy}</span>}
                       </td>
                       <td className="py-1.5 text-right">
                         <IconButton label={`Xoá khoản ${paymentKindLabels[p.kind]} ${money(p.amount)}`} onClick={() => setDeleting(p.id)}>

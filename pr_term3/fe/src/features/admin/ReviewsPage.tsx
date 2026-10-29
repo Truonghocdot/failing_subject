@@ -56,7 +56,7 @@ export function ReviewsPage() {
                     <span className="font-medium">{r.guestName}</span>
                     {r.isHidden && <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-800 dark:bg-slate-700 dark:text-slate-100">Đang ẩn</span>}
                   </div>
-                  {r.comment ? <p className="mt-1 text-sm whitespace-pre-line">{r.comment}</p> : <p className="mt-1 text-sm text-slate-500 italic">(không có nhận xét)</p>}
+                  {r.comment ? <p className="mt-1 text-sm whitespace-pre-line">{r.comment}</p> : <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 italic">(không có nhận xét)</p>}
                   <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                     {r.homestayName} ·{' '}
                     <Link to={`/admin/bookings/${r.bookingId}`} className="font-mono hover:underline">

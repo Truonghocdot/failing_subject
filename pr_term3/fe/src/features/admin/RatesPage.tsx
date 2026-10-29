@@ -6,6 +6,7 @@ import { Button, IconButton } from '../../components/Button'
 import { TextField } from '../../components/Field'
 import { Alert, Card, LoadingBlock } from '../../components/Feedback'
 import { MoneyInput } from '../../components/MoneyInput'
+import { ScrollX } from '../../components/ScrollX'
 import { errorMessage, query } from '../../lib/api'
 import { isoDate, money, shortMoney, today } from '../../lib/format'
 import type { AdminRoom, PriceSource } from '../../lib/types'
@@ -66,11 +67,11 @@ export function RatesPage() {
       ) : (
         <div className="flex flex-col gap-4">
           {rates.isError && <Alert>{errorMessage(rates.error)}</Alert>}
-          <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900" aria-busy={rates.isFetching}>
+          <ScrollX label={`Bảng giá ${month.format('MM/YYYY')}`} busy={rates.isFetching} className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
             <table className="min-w-max text-xs">
               <thead>
                 <tr>
-                  <th className="sticky left-0 z-10 bg-white px-3 py-2 text-left font-medium text-slate-500 dark:bg-slate-900">Phòng</th>
+                  <th className="sticky left-0 z-10 bg-white px-3 py-2 text-left font-medium text-slate-500 dark:text-slate-400 dark:bg-slate-900">Phòng</th>
                   {days.map((d) => (
                     <th key={d} className={`w-14 px-1 py-1.5 text-center font-normal ${[5, 6].includes(dayjs(d).day()) ? 'text-sky-800 dark:text-sky-300' : 'text-slate-500 dark:text-slate-400'}`}>
                       <span className="block">{dayjs(d).format('dd')}</span>
@@ -94,7 +95,7 @@ export function RatesPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </ScrollX>
           <p className="flex flex-wrap gap-4 text-xs">
             <span className="flex items-center gap-1.5">
               <span className={`inline-block size-3 rounded ${sourceTones.override}`} aria-hidden /> Giá riêng (in đậm)

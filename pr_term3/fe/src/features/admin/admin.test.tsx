@@ -68,7 +68,7 @@ describe('lịch phòng', () => {
     })
     renderRoute('/admin/calendar')
 
-    expect(await screen.findByRole('link', { name: /HS-OUT0-0001 – Khách Về Sớm, 1 khách, Đã trả phòng/ })).toHaveClass('h-4')
+    expect((await screen.findByRole('link', { name: /HS-OUT0-0001 – Khách Về Sớm, 1 khách, Đã trả phòng/ })).parentElement).toHaveClass('h-4')
     expect(screen.getByRole('button', { name: new RegExp(`^Phòng Gác Mái, ${dayRe(d0)}`) })).toBeEnabled()
   })
 

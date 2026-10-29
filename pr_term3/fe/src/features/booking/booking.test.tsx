@@ -165,7 +165,7 @@ describe('đặt phòng của tôi', () => {
     const fetchMock = mockApi({ ...base, 'POST /api/bookings/lookup': [200, booking()] })
     renderRoute('/lookup')
 
-    await userEvent.type(screen.getByLabelText('Mã đặt phòng'), 'hs-ab12-cd34')
+    await userEvent.type(await screen.findByLabelText('Mã đặt phòng'), 'hs-ab12-cd34')
     await userEvent.type(screen.getByLabelText('Số điện thoại'), '+84 912 345 678')
     await userEvent.click(screen.getByRole('button', { name: 'Tra cứu' }))
 
@@ -179,7 +179,7 @@ describe('đặt phòng của tôi', () => {
     mockApi({ ...base, 'POST /api/bookings/lookup': [404, { title: 'Không tìm thấy', detail: 'Không tìm thấy đặt phòng' }] })
     renderRoute('/lookup')
 
-    await userEvent.type(screen.getByLabelText('Mã đặt phòng'), 'HS-XXXX-XXXX')
+    await userEvent.type(await screen.findByLabelText('Mã đặt phòng'), 'HS-XXXX-XXXX')
     await userEvent.type(screen.getByLabelText('Số điện thoại'), '0900000000')
     await userEvent.click(screen.getByRole('button', { name: 'Tra cứu' }))
     expect(await screen.findByText('Không tìm thấy đặt phòng')).toBeInTheDocument()

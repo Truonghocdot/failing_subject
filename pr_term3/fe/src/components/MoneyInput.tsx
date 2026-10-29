@@ -32,7 +32,7 @@ export function MoneyInput({
             onChange(digits ? Number(digits) : null)
           }}
         />
-        <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-slate-500" aria-hidden>
+        <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-slate-500 dark:text-slate-400" aria-hidden>
           ₫
         </span>
       </div>

@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "InTst2ViTrc=",
+  "dgSpecHash": "6nK/mf1pyjQ=",
   "success": true,
   "projectFilePath": "C:\\Workspace\\failing_subject\\pr_term3\\backend\\backend.csproj",
   "expectedPackageFiles": [
@@ -30,6 +30,7 @@
     "C:\\Users\\truonghocdot\\.nuget\\packages\\microsoft.entityframeworkcore.design\\10.0.14\\microsoft.entityframeworkcore.design.10.0.14.nupkg.sha512",
     "C:\\Users\\truonghocdot\\.nuget\\packages\\microsoft.entityframeworkcore.relational\\10.0.14\\microsoft.entityframeworkcore.relational.10.0.14.nupkg.sha512",
     "C:\\Users\\truonghocdot\\.nuget\\packages\\microsoft.extensions.dependencymodel\\10.0.14\\microsoft.extensions.dependencymodel.10.0.14.nupkg.sha512",
+    "C:\\Users\\truonghocdot\\.nuget\\packages\\microsoft.extensions.hosting.windowsservices\\10.0.14\\microsoft.extensions.hosting.windowsservices.10.0.14.nupkg.sha512",
     "C:\\Users\\truonghocdot\\.nuget\\packages\\microsoft.identitymodel.abstractions\\8.19.2\\microsoft.identitymodel.abstractions.8.19.2.nupkg.sha512",
     "C:\\Users\\truonghocdot\\.nuget\\packages\\microsoft.identitymodel.jsonwebtokens\\8.19.2\\microsoft.identitymodel.jsonwebtokens.8.19.2.nupkg.sha512",
     "C:\\Users\\truonghocdot\\.nuget\\packages\\microsoft.identitymodel.logging\\8.19.2\\microsoft.identitymodel.logging.8.19.2.nupkg.sha512",
@@ -56,6 +57,7 @@
     "C:\\Users\\truonghocdot\\.nuget\\packages\\system.security.cryptography.pkcs\\10.0.13\\system.security.cryptography.pkcs.10.0.13.nupkg.sha512",
     "C:\\Users\\truonghocdot\\.nuget\\packages\\system.security.cryptography.protecteddata\\10.0.8\\system.security.cryptography.protecteddata.10.0.8.nupkg.sha512",
     "C:\\Users\\truonghocdot\\.nuget\\packages\\system.security.permissions\\10.0.8\\system.security.permissions.10.0.8.nupkg.sha512",
+    "C:\\Users\\truonghocdot\\.nuget\\packages\\system.serviceprocess.servicecontroller\\10.0.14\\system.serviceprocess.servicecontroller.10.0.14.nupkg.sha512",
     "C:\\Users\\truonghocdot\\.nuget\\packages\\system.windows.extensions\\10.0.8\\system.windows.extensions.10.0.8.nupkg.sha512",
     "C:\\Users\\truonghocdot\\.nuget\\packages\\zstdsharp.port\\0.8.8\\zstdsharp.port.0.8.8.nupkg.sha512"
   ],

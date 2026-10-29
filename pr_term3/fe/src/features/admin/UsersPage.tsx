@@ -49,7 +49,7 @@ export function UsersPage() {
               <div className="min-w-0">
                 <p className="font-medium">
                   {s.fullName}
-                  {s.id === me.id && <span className="text-sm font-normal text-slate-500"> (bạn)</span>}
+                  {s.id === me.id && <span className="text-sm font-normal text-slate-500 dark:text-slate-400"> (bạn)</span>}
                 </p>
                 <p className="text-sm break-all text-slate-600 dark:text-slate-300">
                   {s.email}

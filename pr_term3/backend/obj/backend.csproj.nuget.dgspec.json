@@ -80,6 +80,10 @@
               "target": "Package",
               "version": "[10.0.14, )"
             },
+            "Microsoft.Extensions.Hosting.WindowsServices": {
+              "target": "Package",
+              "version": "[10.0.14, )"
+            },
             "MySql.EntityFrameworkCore": {
               "target": "Package",
               "version": "[10.0.12, )"

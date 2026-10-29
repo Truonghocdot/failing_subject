@@ -92,9 +92,13 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
     /// <summary>Số request đăng nhập / đăng ký mỗi phút – mặc định rất cao để test khác không bị chặn.</summary>
     public int? AuthPermitPerMinute { get; init; }
 
+    /// <summary>Thư mục giả lập wwwroot (fe/dist) cho HostingTests.</summary>
+    public string? WebRoot { get; init; }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
+        if (WebRoot is not null) builder.UseWebRoot(WebRoot);
         // Program khởi động trước khi DB test được tạo lại → factory tự migrate + seed (EnsureDatabase)
         builder.UseSetting("Database:SeedOnStartup", "false");
         if (AuthPermitPerMinute is { } permit) builder.UseSetting("RateLimit:AuthPermitPerMinute", permit.ToString());
@@ -125,6 +129,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
                 throw new InvalidOperationException("Test chỉ được chạy trên database *_test");
             db.Database.EnsureDeleted();
             db.Database.Migrate();
+            // id outbox bắt đầu lại từ 1 → xoá .eml của lần chạy trước để không trùng tên "outbox-{id}-"
+            if (Directory.Exists(MailRoot)) Directory.Delete(MailRoot, recursive: true);
             scope.ServiceProvider.GetRequiredService<Seeder>().RunAsync().GetAwaiter().GetResult();
             _dbReady = true;
         }

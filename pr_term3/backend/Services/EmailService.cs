@@ -46,7 +46,7 @@ public sealed class EmailService(AppDbContext db, AppClock clock, IOptions<AppOp
             .Where(b => b.Status == BookingStatus.Confirmed && b.CheckIn == tomorrow && b.GuestEmail != null
                         && !db.BookingEvents.Any(e => e.BookingId == b.Id && e.Type == ReminderEvent))
             .Include(b => b.Homestay).Include(b => b.Room).Include(b => b.Payments)
-            .Take(100)
+            .OrderBy(b => b.Id).Take(100)
             .ToListAsync(ct);
         foreach (var b in due)
         {

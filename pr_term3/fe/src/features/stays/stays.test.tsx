@@ -22,7 +22,8 @@ describe('tìm kiếm', () => {
     await userEvent.click(within(search).getByRole('button', { name: 'Thêm 1 khách' }))
     await userEvent.click(within(search).getByRole('button', { name: 'Tìm' }))
 
-    expect(router.state.location.pathname).toBe('/stays')
+    // /stays tách chunk riêng → URL đổi sau khi tải xong trang
+    await waitFor(() => expect(router.state.location.pathname).toBe('/stays'))
     expect(Object.fromEntries(new URLSearchParams(router.state.location.search))).toEqual({
       province: 'Lâm Đồng',
       checkIn,

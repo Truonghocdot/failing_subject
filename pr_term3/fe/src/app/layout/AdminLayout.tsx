@@ -2,6 +2,7 @@ import { ExternalLink, LogOut, Menu, X } from 'lucide-react'
 import { useState } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router'
 import { useAuth, useUser } from '../../features/auth/useAuth'
+import { SkipLink } from '../../components/SkipLink'
 import { env } from '../env'
 import { HealthBadge } from './HealthBadge'
 import { adminNav } from './nav'
@@ -72,6 +73,7 @@ export function AdminLayout() {
   const [open, setOpen] = useState(false)
   return (
     <div className="min-h-dvh md:flex">
+      <SkipLink />
       <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-slate-200 bg-white p-4 md:flex dark:border-slate-800 dark:bg-slate-900">
         <SideNav />
       </aside>
@@ -106,7 +108,7 @@ export function AdminLayout() {
         </div>
       )}
 
-      <main className="min-w-0 flex-1 px-4 py-4 md:px-8 md:py-8">
+      <main id="main" tabIndex={-1} className="min-w-0 flex-1 px-4 py-4 outline-none md:px-8 md:py-8">
         <Outlet />
       </main>
     </div>

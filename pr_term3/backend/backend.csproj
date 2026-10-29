@@ -12,6 +12,25 @@
     <Content Update="dotnet-tools.json" CopyToPublishDirectory="Never" />
   </ItemGroup>
 
+  <!-- dotnet publish: build ../fe rồi chép fe/dist vào publish/wwwroot → 1 tiến trình phục vụ cả API lẫn giao diện.
+       Bỏ qua bước này (VD đã build FE sẵn / máy không có Node): dotnet publish -p:SkipFrontend=true -->
+  <PropertyGroup>
+    <FrontendRoot>$(MSBuildProjectDirectory)\..\fe\</FrontendRoot>
+  </PropertyGroup>
+
+  <Target Name="PublishFrontend" AfterTargets="ComputeFilesToPublish" Condition="'$(SkipFrontend)' != 'true'">
+    <Exec WorkingDirectory="$(FrontendRoot)" Command="npm ci" Condition="!Exists('$(FrontendRoot)node_modules')" />
+    <Exec WorkingDirectory="$(FrontendRoot)" Command="npm run build" />
+    <ItemGroup>
+      <FrontendDist Include="$(FrontendRoot)dist\**" />
+      <ResolvedFileToPublish Include="@(FrontendDist->'%(FullPath)')" Exclude="@(ResolvedFileToPublish)">
+        <RelativePath>wwwroot\%(RecursiveDir)%(Filename)%(Extension)</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+        <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      </ResolvedFileToPublish>
+    </ItemGroup>
+  </Target>
+
   <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.2.0" />
     <PackageReference Include="DotNetEnv" Version="3.2.0" />
@@ -24,6 +43,7 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.14" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.14" />
     <PackageReference Include="MySql.EntityFrameworkCore" Version="10.0.12" />
   </ItemGroup>
 

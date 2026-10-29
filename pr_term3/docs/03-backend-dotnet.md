@@ -124,7 +124,8 @@ backend/
 | `Jwt__Secret` | – (bắt buộc, ≥ 32 ký tự) | `Jwt__Issuer`, `Jwt__Audience`, `Jwt__AccessTokenMinutes` (15), `Jwt__RefreshTokenDays` (30), `Jwt__RefreshCookieSecure` |
 | `Seed__AdminEmail` / `Seed__AdminPassword` | – | Tạo admin đầu tiên khi DB chưa có admin (mật khẩu ≥ 8 ký tự) |
 | `Seed__SampleData` | `false` (`true` ở `appsettings.Development.json`) | 2 homestay + 5 phòng mẫu khi chưa có homestay |
-| `Database__MigrateOnStartup` / `Database__SeedOnStartup` | `false` / `true` | Development luôn migrate |
+| `Database__MigrateOnStartup` / `Database__SeedOnStartup` | `false` (Production: `true`) / `true` | Development luôn migrate; Production bật sẵn ở `appsettings.Production.json` |
+| `Logging__File__Enabled` / `__Path` / `__RetainDays` | `false` (Production: `true`) / `logs` / `14` | Log ra file theo ngày cạnh `backend.exe` |
 | `App__TimeZone` | `Asia/Ho_Chi_Minh` | "Hôm nay", hạn giữ chỗ, chính sách huỷ |
 | `App__PublicBaseUrl` | `http://localhost:5174` | Link trong email |
 | `Payment__BankName` / `__AccountNumber` / `__AccountName` | – (Development: tài khoản demo trong `appsettings.Development.json`) | Hiện trong hướng dẫn chuyển khoản (nội dung CK = mã đặt phòng); trống → không hiện |

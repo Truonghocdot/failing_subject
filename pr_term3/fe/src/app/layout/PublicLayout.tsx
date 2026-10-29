@@ -2,6 +2,7 @@ import { CircleUserRound, Menu, X } from 'lucide-react'
 import { useState } from 'react'
 import { Link, NavLink, Outlet } from 'react-router'
 import { useAuth } from '../../features/auth/useAuth'
+import { SkipLink } from '../../components/SkipLink'
 import { env } from '../env'
 import { HealthBadge } from './HealthBadge'
 import { publicNav } from './nav'
@@ -21,6 +22,7 @@ export function PublicLayout() {
   const user = auth.status === 'authenticated' ? auth.user : null
   return (
     <div className="flex min-h-dvh flex-col">
+      <SkipLink />
       <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur dark:border-slate-800 dark:bg-slate-900/90">
         <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4">
           <Link to="/" className="flex items-center gap-2 font-semibold">
@@ -86,7 +88,7 @@ export function PublicLayout() {
         )}
       </header>
 
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 md:py-10">
+      <main id="main" tabIndex={-1} className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 outline-none md:py-10">
         <Outlet />
       </main>
 

@@ -26,7 +26,7 @@ describe('khu khách', () => {
     const mobile = screen.getByRole('navigation', { name: 'Điều hướng khách (điện thoại)' })
     await userEvent.click(within(mobile).getByRole('link', { name: 'Tra cứu đặt phòng' }))
 
-    expect(screen.getByRole('heading', { name: 'Tra cứu đặt phòng' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Tra cứu đặt phòng' })).toBeInTheDocument()
     expect(screen.queryByRole('navigation', { name: 'Điều hướng khách (điện thoại)' })).not.toBeInTheDocument()
   })
 
@@ -91,5 +91,26 @@ describe('khu quản trị', () => {
     renderRoute('/admin/khong-co')
 
     expect(await screen.findByRole('link', { name: 'Về trang Hôm nay' })).toHaveAttribute('href', '/admin')
+  })
+})
+
+describe('lỗi tải trang', () => {
+  it('chunk của bản cũ đã bị xoá → "Ứng dụng vừa được cập nhật" + nút tải lại', async () => {
+    const { createMemoryRouter, RouterProvider } = await import('react-router')
+    const { render } = await import('@testing-library/react')
+    const { RouteError } = await import('../RouteError')
+    const router = createMemoryRouter([
+      {
+        path: '/',
+        errorElement: <RouteError />,
+        lazy: async () => {
+          throw new TypeError('Failed to fetch dynamically imported module: /assets/CalendarPage-old.js')
+        },
+      },
+    ])
+    render(<RouterProvider router={router} />)
+
+    expect(await screen.findByText('Ứng dụng vừa được cập nhật')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Tải lại trang' })).toBeInTheDocument()
   })
 })

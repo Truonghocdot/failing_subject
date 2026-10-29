@@ -612,6 +612,25 @@
           "buildTransitive/net8.0/_._": {}
         }
       },
+      "Microsoft.Extensions.Hosting.WindowsServices/10.0.14": {
+        "type": "package",
+        "dependencies": {
+          "System.ServiceProcess.ServiceController": "10.0.14"
+        },
+        "compile": {
+          "lib/net10.0/Microsoft.Extensions.Hosting.WindowsServices.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net10.0/Microsoft.Extensions.Hosting.WindowsServices.dll": {
+            "related": ".xml"
+          }
+        },
+        "build": {
+          "buildTransitive/net8.0/_._": {}
+        }
+      },
       "Microsoft.IdentityModel.Abstractions/8.19.2": {
         "type": "package",
         "compile": {
@@ -1069,6 +1088,28 @@
         },
         "build": {
           "buildTransitive/net8.0/_._": {}
+        }
+      },
+      "System.ServiceProcess.ServiceController/10.0.14": {
+        "type": "package",
+        "compile": {
+          "lib/net10.0/System.ServiceProcess.ServiceController.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net10.0/System.ServiceProcess.ServiceController.dll": {
+            "related": ".xml"
+          }
+        },
+        "build": {
+          "buildTransitive/net8.0/_._": {}
+        },
+        "runtimeTargets": {
+          "runtimes/win/lib/net10.0/System.ServiceProcess.ServiceController.dll": {
+            "assetType": "runtime",
+            "rid": "win"
+          }
         }
       },
       "System.Windows.Extensions/10.0.8": {
@@ -2568,6 +2609,37 @@
         "useSharedDesignerContext.txt"
       ]
     },
+    "Microsoft.Extensions.Hosting.WindowsServices/10.0.14": {
+      "sha512": "IQSOKNkh06e2eskQ6ltSBZmtQqdu7/0A634/XSmXrtrlDwPbMFbTNEJs1bySQFOxH3xlCAnYNbf+Hh4Fp3nQ5Q==",
+      "type": "package",
+      "path": "microsoft.extensions.hosting.windowsservices/10.0.14",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Icon.png",
+        "PACKAGE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "buildTransitive/net461/Microsoft.Extensions.Hosting.WindowsServices.targets",
+        "buildTransitive/net462/_._",
+        "buildTransitive/net8.0/_._",
+        "buildTransitive/netcoreapp2.0/Microsoft.Extensions.Hosting.WindowsServices.targets",
+        "lib/net10.0/Microsoft.Extensions.Hosting.WindowsServices.dll",
+        "lib/net10.0/Microsoft.Extensions.Hosting.WindowsServices.xml",
+        "lib/net462/Microsoft.Extensions.Hosting.WindowsServices.dll",
+        "lib/net462/Microsoft.Extensions.Hosting.WindowsServices.xml",
+        "lib/net8.0/Microsoft.Extensions.Hosting.WindowsServices.dll",
+        "lib/net8.0/Microsoft.Extensions.Hosting.WindowsServices.xml",
+        "lib/net9.0/Microsoft.Extensions.Hosting.WindowsServices.dll",
+        "lib/net9.0/Microsoft.Extensions.Hosting.WindowsServices.xml",
+        "lib/netstandard2.0/Microsoft.Extensions.Hosting.WindowsServices.dll",
+        "lib/netstandard2.0/Microsoft.Extensions.Hosting.WindowsServices.xml",
+        "lib/netstandard2.1/Microsoft.Extensions.Hosting.WindowsServices.dll",
+        "lib/netstandard2.1/Microsoft.Extensions.Hosting.WindowsServices.xml",
+        "microsoft.extensions.hosting.windowsservices.10.0.14.nupkg.sha512",
+        "microsoft.extensions.hosting.windowsservices.nuspec",
+        "useSharedDesignerContext.txt"
+      ]
+    },
     "Microsoft.IdentityModel.Abstractions/8.19.2": {
       "sha512": "HJbo/lnSfNHUfphPRT910poQc4T2/9+8svFLvzuaYHGAOJ2Tu+oEDqpX0BVP3BJ4OuUM1kylEKyaiX2fCAK3Cw==",
       "type": "package",
@@ -3260,6 +3332,41 @@
         "useSharedDesignerContext.txt"
       ]
     },
+    "System.ServiceProcess.ServiceController/10.0.14": {
+      "sha512": "riMCsgbGKGonluQzaRRrx5ney0QNkEmepNTrHD3QpqU/ICZpCJsyAWNi6JESTxqYkc+9kNQ55aZaH/n3xOjSlg==",
+      "type": "package",
+      "path": "system.serviceprocess.servicecontroller/10.0.14",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Icon.png",
+        "PACKAGE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "buildTransitive/net461/System.ServiceProcess.ServiceController.targets",
+        "buildTransitive/net462/_._",
+        "buildTransitive/net8.0/_._",
+        "buildTransitive/netcoreapp2.0/System.ServiceProcess.ServiceController.targets",
+        "lib/net10.0/System.ServiceProcess.ServiceController.dll",
+        "lib/net10.0/System.ServiceProcess.ServiceController.xml",
+        "lib/net462/System.ServiceProcess.ServiceController.dll",
+        "lib/net462/System.ServiceProcess.ServiceController.xml",
+        "lib/net8.0/System.ServiceProcess.ServiceController.dll",
+        "lib/net8.0/System.ServiceProcess.ServiceController.xml",
+        "lib/net9.0/System.ServiceProcess.ServiceController.dll",
+        "lib/net9.0/System.ServiceProcess.ServiceController.xml",
+        "lib/netstandard2.0/System.ServiceProcess.ServiceController.dll",
+        "lib/netstandard2.0/System.ServiceProcess.ServiceController.xml",
+        "runtimes/win/lib/net10.0/System.ServiceProcess.ServiceController.dll",
+        "runtimes/win/lib/net10.0/System.ServiceProcess.ServiceController.xml",
+        "runtimes/win/lib/net8.0/System.ServiceProcess.ServiceController.dll",
+        "runtimes/win/lib/net8.0/System.ServiceProcess.ServiceController.xml",
+        "runtimes/win/lib/net9.0/System.ServiceProcess.ServiceController.dll",
+        "runtimes/win/lib/net9.0/System.ServiceProcess.ServiceController.xml",
+        "system.serviceprocess.servicecontroller.10.0.14.nupkg.sha512",
+        "system.serviceprocess.servicecontroller.nuspec",
+        "useSharedDesignerContext.txt"
+      ]
+    },
     "System.Windows.Extensions/10.0.8": {
       "sha512": "4hnHSbtc1FP91qiOsweSa/3My/tkKAU9WcUyCZNSUPhfNyFtIhTl9qEPaSK2g4XzTMaq4huRerF6tSV9q44Cnw==",
       "type": "package",
@@ -3318,6 +3425,7 @@
       "Microsoft.AspNetCore.OpenApi >= 10.0.14",
       "Microsoft.EntityFrameworkCore.Design >= 10.0.14",
       "Microsoft.EntityFrameworkCore.Relational >= 10.0.14",
+      "Microsoft.Extensions.Hosting.WindowsServices >= 10.0.14",
       "MySql.EntityFrameworkCore >= 10.0.12"
     ]
   },
@@ -3397,6 +3505,10 @@
             "version": "[10.0.14, )"
           },
           "Microsoft.EntityFrameworkCore.Relational": {
+            "target": "Package",
+            "version": "[10.0.14, )"
+          },
+          "Microsoft.Extensions.Hosting.WindowsServices": {
             "target": "Package",
             "version": "[10.0.14, )"
           },
