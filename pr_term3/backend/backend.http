@@ -1,0 +1,71 @@
+# Request mẫu – VS Code REST Client / Rider / Visual Studio
+# Đăng nhập trước rồi chép accessToken vào @token (refresh token nằm trong cookie "rt", client tự giữ)
+@host = http://localhost:5100
+@token = dan-access-token-vao-day
+
+### Kiểm tra API + kết nối DB
+GET {{host}}/health
+
+### OpenAPI (chỉ Development)
+GET {{host}}/openapi/v1.json
+
+### Khách tự đăng ký (luôn vai trò guest)
+POST {{host}}/api/auth/register
+Content-Type: application/json
+
+{ "email": "khach@example.com", "password": "matkhau123", "fullName": "Nguyễn Văn Khách", "phone": "0912 345 678" }
+
+### Đăng nhập (admin đầu tiên: Seed__AdminEmail / Seed__AdminPassword trong backend/.env)
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "admin@homestay.local", "password": "<Seed__AdminPassword>" }
+
+### Đổi cookie refresh lấy access token mới
+POST {{host}}/api/auth/refresh
+
+### Đăng xuất
+POST {{host}}/api/auth/logout
+
+### Hồ sơ
+GET {{host}}/api/me
+Authorization: Bearer {{token}}
+
+### Sửa hồ sơ
+PUT {{host}}/api/me
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "fullName": "Nguyễn Văn Khách", "phone": "+84 987 654 321" }
+
+### Đổi mật khẩu (đăng xuất mọi thiết bị khác)
+PUT {{host}}/api/me/password
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "currentPassword": "matkhau123", "newPassword": "matkhaumoi456" }
+
+### [admin] Danh sách nhân viên
+GET {{host}}/api/admin/users?q=
+Authorization: Bearer {{token}}
+
+### [admin] Tạo lễ tân
+POST {{host}}/api/admin/users
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "email": "letan@homestay.local", "password": "letan12345", "fullName": "Trần Thị Lễ Tân", "phone": "0901234567", "role": "staff" }
+
+### [admin] Sửa / đổi vai trò / khoá (isActive: false)
+PUT {{host}}/api/admin/users/00000000-0000-0000-0000-000000000000
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "fullName": "Trần Thị Lễ Tân", "phone": "0901234567", "role": "staff", "isActive": false }
+
+### [admin] Đặt lại mật khẩu nhân viên
+POST {{host}}/api/admin/users/00000000-0000-0000-0000-000000000000/reset-password
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "password": "matkhaumoi789" }

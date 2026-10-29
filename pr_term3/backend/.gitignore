@@ -1,0 +1,15 @@
+bin/
+obj/
+publish/
+wwwroot/
+*.user
+.vs/
+
+# Ảnh upload, email dev (.eml) – dữ liệu runtime, không commit.
+# Không đặt tên "data/": git trên Windows không phân biệt hoa thường → sẽ bỏ qua luôn thư mục mã nguồn Data/
+/storage/
+
+# Biến môi trường – chỉ commit .env.example
+.env
+.env.*
+!.env.example
